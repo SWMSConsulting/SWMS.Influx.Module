@@ -88,6 +88,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                             {
                                 Value = double.TryParse(record.GetValueByKey("_value").ToString(), out double v) ? v : 0.0,
                                 Time = XmlConvert.ToDateTime(record.GetValueByKey("_time").ToString(), XmlDateTimeSerializationMode.Local),
+                                InfluxField = this,
                             };
                             datapoints.Add(datapoint);
                         }

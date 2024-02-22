@@ -87,6 +87,20 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
         }
 
+        private InfluxField _InfluxField;
+        public InfluxField InfluxField
+        {
+            get { return _InfluxField; }
+            set
+            {
+                if (_InfluxField != value)
+                {
+                    _InfluxField = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         #region IXafEntityObject members (see https://documentation.devexpress.com/eXpressAppFramework/clsDevExpressExpressAppIXafEntityObjecttopic.aspx)
         void IXafEntityObject.OnCreated()
         {
