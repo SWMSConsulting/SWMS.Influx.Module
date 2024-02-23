@@ -44,14 +44,6 @@ namespace SWMS.Influx.Module.Controllers
         {
             FilterDetailListView((ListView)AssetAdministrationShellViewItem.InnerView, (ListView)InfluxMeasurementViewItem.InnerView);
         }
-        private void DisableNavigationActions(Frame frame)
-        {
-            RecordsNavigationController recordsNavigationController = frame.GetController<RecordsNavigationController>();
-            if (recordsNavigationController != null)
-            {
-                recordsNavigationController.Active.SetItemValue("DashboardFiltering", false);
-            }
-        }
 
         protected override void OnActivated()
         {
@@ -66,17 +58,7 @@ namespace SWMS.Influx.Module.Controllers
                 }
                 if (InfluxMeasurementViewItem != null)
                 {
-                    if (InfluxMeasurementViewItem.Frame != null)
-                    {
-                        DisableNavigationActions(InfluxMeasurementViewItem.Frame);
-                    }
-                    else
-                    {
-                        InfluxMeasurementViewItem.ControlCreated += (s, e) =>
-                        {
-                            DisableNavigationActions(InfluxMeasurementViewItem.Frame);
-                        };
-                    }
+                
                 }
             }
         }
