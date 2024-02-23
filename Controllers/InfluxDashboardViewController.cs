@@ -13,8 +13,8 @@ namespace SWMS.Influx.Module.Controllers
     public class InfluxDashboardViewController : ViewController<DashboardView>
     {
         private const string DashboardViewId = "InfluxDashboardView";
-        private DashboardViewItem SourceItem;
-        private DashboardViewItem TargetItem;
+        private DashboardViewItem AssetAdministrationShellViewItem;
+        private DashboardViewItem InfluxMeasurementViewItem;
         private const string CriteriaName = "Test";
 
         private void FilterDetailListView(ListView masterListView, ListView detailListView)
@@ -42,7 +42,7 @@ namespace SWMS.Influx.Module.Controllers
         }
         private void innerListView_SelectionChanged(object sender, EventArgs e)
         {
-            FilterDetailListView((ListView)SourceItem.InnerView, (ListView)TargetItem.InnerView);
+            FilterDetailListView((ListView)AssetAdministrationShellViewItem.InnerView, (ListView)InfluxMeasurementViewItem.InnerView);
         }
         private void DisableNavigationActions(Frame frame)
         {
@@ -58,23 +58,23 @@ namespace SWMS.Influx.Module.Controllers
             base.OnActivated();
             if (View.Id == DashboardViewId)
             {
-                SourceItem = (DashboardViewItem)View.FindItem(FilterSourceID);
-                TargetItem = (DashboardViewItem)View.FindItem(FilterTargetId);
-                if (SourceItem != null)
+                AssetAdministrationShellViewItem = (DashboardViewItem)View.FindItem(AssetAdministrationShellViewId);
+                InfluxMeasurementViewItem = (DashboardViewItem)View.FindItem(InfluxMeasurementViewId);
+                if (AssetAdministrationShellViewItem != null)
                 {
-                    SourceItem.ControlCreated += SourceItem_ControlCreated;
+                    AssetAdministrationShellViewItem.ControlCreated += SourceItem_ControlCreated;
                 }
-                if (TargetItem != null)
+                if (InfluxMeasurementViewItem != null)
                 {
-                    if (TargetItem.Frame != null)
+                    if (InfluxMeasurementViewItem.Frame != null)
                     {
-                        DisableNavigationActions(TargetItem.Frame);
+                        DisableNavigationActions(InfluxMeasurementViewItem.Frame);
                     }
                     else
                     {
-                        TargetItem.ControlCreated += (s, e) =>
+                        InfluxMeasurementViewItem.ControlCreated += (s, e) =>
                         {
-                            DisableNavigationActions(TargetItem.Frame);
+                            DisableNavigationActions(InfluxMeasurementViewItem.Frame);
                         };
                     }
                 }
@@ -82,20 +82,20 @@ namespace SWMS.Influx.Module.Controllers
         }
         protected override void OnDeactivated()
         {
-            if (SourceItem != null)
+            if (AssetAdministrationShellViewItem != null)
             {
-                SourceItem.ControlCreated -= SourceItem_ControlCreated;
-                SourceItem = null;
+                AssetAdministrationShellViewItem.ControlCreated -= SourceItem_ControlCreated;
+                AssetAdministrationShellViewItem = null;
             }
-            TargetItem = null;
+            InfluxMeasurementViewItem = null;
             base.OnDeactivated();
         }
         public InfluxDashboardViewController()
         {
-            FilterSourceID = "AssetAdministrationShellView";
-            FilterTargetId = "InfluxMeasurementView";
+            AssetAdministrationShellViewId = "AssetAdministrationShellView";
+            InfluxMeasurementViewId = "InfluxMeasurementView";
         }
-        public string FilterSourceID { get; set; }
-        public string FilterTargetId { get; set; }
+        public string AssetAdministrationShellViewId { get; set; }
+        public string InfluxMeasurementViewId { get; set; }
     }
 }
