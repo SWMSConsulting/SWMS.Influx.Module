@@ -15,6 +15,7 @@ namespace SWMS.Influx.Module.Controllers
         private const string DashboardViewId = "InfluxDashboardView";
         private DashboardViewItem AssetAdministrationShellViewItem;
         private DashboardViewItem InfluxMeasurementViewItem;
+        private DashboardViewItem InfluxFieldViewItem;
         private const string CriteriaName = "Test";
 
         private void FilterDetailListView(ListView masterListView, ListView detailListView)
@@ -27,7 +28,14 @@ namespace SWMS.Influx.Module.Controllers
             }
             if (searchedObjects.Count > 0)
             {
-                detailListView.CollectionSource.Criteria[CriteriaName] = CriteriaOperator.FromLambda<InfluxMeasurement>(x => searchedObjects.Contains(x.AssetAdministrationShell.ID));
+                if (masterListView.ObjectTypeInfo.Name == "AssetAdministrationShell")
+                {
+                    detailListView.CollectionSource.Criteria[CriteriaName] = CriteriaOperator.FromLambda<InfluxMeasurement>(x => searchedObjects.Contains(x.AssetAdministrationShell.ID));
+                }
+                else if (masterListView.ObjectTypeInfo.Name == "InfluxMeasurement")
+                {
+                    detailListView.CollectionSource.Criteria[CriteriaName] = CriteriaOperator.FromLambda<InfluxField>(x => searchedObjects.Contains(x.InfluxMeasurement.ID));
+                }
             }
         }
         private void SourceItem_ControlCreated(object sender, EventArgs e)
@@ -42,7 +50,15 @@ namespace SWMS.Influx.Module.Controllers
         }
         private void innerListView_SelectionChanged(object sender, EventArgs e)
         {
-            FilterDetailListView((ListView)AssetAdministrationShellViewItem.InnerView, (ListView)InfluxMeasurementViewItem.InnerView);
+            ListView listView = (ListView)sender;
+            if (listView.ObjectTypeInfo.Name == "AssetAdministrationShell")
+            {
+                FilterDetailListView((ListView)AssetAdministrationShellViewItem.InnerView, (ListView)InfluxMeasurementViewItem.InnerView);
+            }
+            else if (listView.ObjectTypeInfo.Name == "InfluxMeasurement")
+            {
+                FilterDetailListView((ListView)InfluxMeasurementViewItem.InnerView, (ListView)InfluxFieldViewItem.InnerView);
+            }
         }
 
         protected override void OnActivated()
@@ -52,13 +68,14 @@ namespace SWMS.Influx.Module.Controllers
             {
                 AssetAdministrationShellViewItem = (DashboardViewItem)View.FindItem(AssetAdministrationShellViewId);
                 InfluxMeasurementViewItem = (DashboardViewItem)View.FindItem(InfluxMeasurementViewId);
+                InfluxFieldViewItem = (DashboardViewItem)View.FindItem(InfluxFieldViewId);
                 if (AssetAdministrationShellViewItem != null)
                 {
                     AssetAdministrationShellViewItem.ControlCreated += SourceItem_ControlCreated;
                 }
                 if (InfluxMeasurementViewItem != null)
                 {
-                
+                    InfluxMeasurementViewItem.ControlCreated += SourceItem_ControlCreated;
                 }
             }
         }
@@ -69,15 +86,22 @@ namespace SWMS.Influx.Module.Controllers
                 AssetAdministrationShellViewItem.ControlCreated -= SourceItem_ControlCreated;
                 AssetAdministrationShellViewItem = null;
             }
-            InfluxMeasurementViewItem = null;
+            if (InfluxMeasurementViewItem != null)
+            {
+                InfluxMeasurementViewItem.ControlCreated -= SourceItem_ControlCreated;
+                InfluxMeasurementViewItem = null;
+            }
+            InfluxFieldViewItem = null;
             base.OnDeactivated();
         }
         public InfluxDashboardViewController()
         {
             AssetAdministrationShellViewId = "AssetAdministrationShellView";
             InfluxMeasurementViewId = "InfluxMeasurementView";
+            InfluxFieldViewId = "InfluxFieldView";
         }
         public string AssetAdministrationShellViewId { get; set; }
         public string InfluxMeasurementViewId { get; set; }
+        public string InfluxFieldViewId { get; set; }
     }
 }
