@@ -36,6 +36,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         }        
 
         public virtual string Name { get; set; }
+        [ExpandObjectMembers(ExpandObjectMembers.InListView)]
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
 
 
@@ -102,6 +103,10 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         }
 
+        public string GetFullName()
+        {
+            return $"{InfluxMeasurement.AssetAdministrationShell.AssetId} - {InfluxMeasurement.Name} - {Name}";
+        }
 
         #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)
         public event PropertyChangedEventHandler PropertyChanged;

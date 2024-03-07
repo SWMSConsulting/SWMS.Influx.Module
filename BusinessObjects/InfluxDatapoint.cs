@@ -88,6 +88,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         }
 
         private InfluxField _InfluxField;
+        [ExpandObjectMembers(ExpandObjectMembers.InListView)]
         public InfluxField InfluxField
         {
             get { return _InfluxField; }
