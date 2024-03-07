@@ -18,12 +18,14 @@
         <DashboardViewItem Id="AssetAdministrationShellView" Caption="AssetAdministrationShell" ViewId="AssetAdministrationShell_ListView" Index="0" IsNewNode="True" />
         <DashboardViewItem Id="InfluxMeasurementView" Caption="InfluxMeasurement" ViewId="InfluxMeasurement_ListView" Index="1" IsNewNode="True" />
         <DashboardViewItem Id="InfluxFieldView" ViewId="InfluxField_ListView" Caption="InfluxField" Index="2" IsNewNode="True" />
+        <DashboardViewItem Id="InfluxDatapointListView" ViewId="InfluxDatapointList_DetailView" Caption="InfluxDatapointList" Index="3" IsNewNode="True" />
       </Items>
       <Layout IsNewNode="True">
         <LayoutGroup Id="Main" IsNewNode="True">
           <LayoutItem Id="AssetAdministrationShellView" ViewItem="AssetAdministrationShellView" Index="0" IsNewNode="True" />
           <LayoutItem Id="InfluxMeasurementView" ViewItem="InfluxMeasurementView" Index="1" IsNewNode="True" />
           <LayoutItem Id="InfluxFieldView" ViewItem="InfluxFieldView" Index="2" IsNewNode="True" />
+          <LayoutItem Id="InfluxDatapointListView" ViewItem="InfluxDatapointListView" Index="3" IsNewNode="True" />
         </LayoutGroup>
       </Layout>
     </DashboardView>

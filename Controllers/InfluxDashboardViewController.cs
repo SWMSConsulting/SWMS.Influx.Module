@@ -6,6 +6,9 @@ using System.Collections.Generic;
 using DevExpress.ExpressApp.Editors;
 using DevExpress.ExpressApp.SystemModule;
 using SWMS.Influx.Module.BusinessObjects;
+using DevExpress.ExpressApp.Actions;
+using DevExpress.Persistent.Base;
+using System.ComponentModel;
 
 namespace SWMS.Influx.Module.Controllers
 {
@@ -16,6 +19,7 @@ namespace SWMS.Influx.Module.Controllers
         private DashboardViewItem AssetAdministrationShellViewItem;
         private DashboardViewItem InfluxMeasurementViewItem;
         private DashboardViewItem InfluxFieldViewItem;
+        private DashboardViewItem InfluxDatapointListViewItem;
         private const string CriteriaName = "Test";
 
         private void FilterDetailListView(ListView masterListView, ListView detailListView)
@@ -59,7 +63,7 @@ namespace SWMS.Influx.Module.Controllers
             {
                 FilterDetailListView((ListView)InfluxMeasurementViewItem.InnerView, (ListView)InfluxFieldViewItem.InnerView);
             }
-        }
+        }        
 
         protected override void OnActivated()
         {
@@ -69,6 +73,7 @@ namespace SWMS.Influx.Module.Controllers
                 AssetAdministrationShellViewItem = (DashboardViewItem)View.FindItem(AssetAdministrationShellViewId);
                 InfluxMeasurementViewItem = (DashboardViewItem)View.FindItem(InfluxMeasurementViewId);
                 InfluxFieldViewItem = (DashboardViewItem)View.FindItem(InfluxFieldViewId);
+                InfluxDatapointListViewItem = (DashboardViewItem)View.FindItem(InfluxDatapointListViewId);
                 if (AssetAdministrationShellViewItem != null)
                 {
                     AssetAdministrationShellViewItem.ControlCreated += SourceItem_ControlCreated;
@@ -76,6 +81,10 @@ namespace SWMS.Influx.Module.Controllers
                 if (InfluxMeasurementViewItem != null)
                 {
                     InfluxMeasurementViewItem.ControlCreated += SourceItem_ControlCreated;
+                }
+                if (InfluxFieldViewItem != null)
+                {
+                    InfluxFieldViewItem.ControlCreated += SourceItem_ControlCreated;
                 }
             }
         }
@@ -91,7 +100,12 @@ namespace SWMS.Influx.Module.Controllers
                 InfluxMeasurementViewItem.ControlCreated -= SourceItem_ControlCreated;
                 InfluxMeasurementViewItem = null;
             }
-            InfluxFieldViewItem = null;
+            if (InfluxFieldViewItem != null)
+            {
+                InfluxFieldViewItem.ControlCreated -= SourceItem_ControlCreated;
+                InfluxFieldViewItem = null;
+            }
+            InfluxDatapointListViewItem = null;
             base.OnDeactivated();
         }
         public InfluxDashboardViewController()
@@ -99,9 +113,44 @@ namespace SWMS.Influx.Module.Controllers
             AssetAdministrationShellViewId = "AssetAdministrationShellView";
             InfluxMeasurementViewId = "InfluxMeasurementView";
             InfluxFieldViewId = "InfluxFieldView";
+            InfluxDatapointListViewId = "InfluxDatapointListView";
+
+            SimpleAction mySimpleAction = new SimpleAction(this, "LoadDatapointsAction", PredefinedCategory.View)
+            {
+                Caption = "Load Datapoints",
+                ImageName = "Action_Refresh"
+            };
+            mySimpleAction.Execute += LoadDatapointsAction;
+
+        }
+
+        private async void LoadDatapointsAction(object sender, SimpleActionExecuteEventArgs e)
+        {
+            await LoadDatapoints();
+        }
+        private async Task LoadDatapoints()
+        {
+            ListView influxFieldListView = (ListView)InfluxFieldViewItem.InnerView;
+            DetailView influxDatapointListView = (DetailView)InfluxDatapointListViewItem.InnerView;
+
+            List <InfluxDatapoint> datapoints = new();
+
+            influxDatapointListView.CurrentObject = new InfluxDatapointList();
+            var influxDatapointList = (InfluxDatapointList)influxDatapointListView.CurrentObject;
+
+            foreach (object obj in influxFieldListView.SelectedObjects)
+            {
+                InfluxField influxField = (InfluxField)obj;
+                await influxField.GetDatapoints();
+                datapoints.AddRange(influxField.Datapoints);
+            }
+
+            influxDatapointList.Datapoints = new BindingList<InfluxDatapoint>(datapoints);
+
         }
         public string AssetAdministrationShellViewId { get; set; }
         public string InfluxMeasurementViewId { get; set; }
         public string InfluxFieldViewId { get; set; }
+        public string InfluxDatapointListViewId { get; set; }
     }
 }
