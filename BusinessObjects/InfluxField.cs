@@ -40,9 +40,9 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
 
 
-        private List<InfluxDatapoint> _Datapoints;
+        private BindingList<InfluxDatapoint> _Datapoints;
         [NotMapped]
-        public List<InfluxDatapoint> Datapoints
+        public BindingList<InfluxDatapoint> Datapoints
         {
             get { return _Datapoints; }
             set
@@ -55,7 +55,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
         }
 
-        public async Task GetDatapoints()
+        public async Task<BindingList<InfluxDatapoint>> GetDatapoints()
         {
             Console.WriteLine("GetDatapoints");
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
@@ -73,8 +73,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                             $"r._field == \"{field}\" and " +
                             $"r.{InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier} == \"{InfluxMeasurement.AssetAdministrationShell.AssetId}\"" +
                             $")" +
-                            $"|> aggregateWindow(every: 1m, fn: mean)" +
-                            $"|> fill(usePrevious: true)";
+                            $"|> aggregateWindow(every: 1m, fn: mean)";
 
                 List<InfluxDatapoint> datapoints = new ();
 
@@ -99,7 +98,8 @@ namespace SWMS.Influx.Module.BusinessObjects
 
             });
 
-            Datapoints = results.ToList();
+            Datapoints = new BindingList<InfluxDatapoint>(results);
+            return Datapoints;
 
         }
 
