@@ -28,15 +28,40 @@ namespace SWMS.Influx.Module.BusinessObjects
         {
 
         }
-        
+
         public virtual string AssetId { get; set; }
+
         public virtual AssetCategory AssetCategory { get; set; }
         public virtual IList<InfluxMeasurement> InfluxMeasurements { get; set; } = new ObservableCollection<InfluxMeasurement>();
 
         public virtual void OnInfluxFieldUpdated(InfluxField field) { }
 
+        [Action(
+            Caption = "Refresh Data",
+            ImageName = "Action_Refresh",
+            AutoCommit = true
+        )]
+        public async Task RefreshData()
+        {
+            await GetMeasurements();
+
+            foreach (var measurement in InfluxMeasurements)
+            {
+                await measurement.GetFields();
+                foreach (var field in measurement.InfluxFields)
+                {
+                    await field.GetDatapoints();
+                }
+            }
+        }
+
         public async Task GetMeasurements()
         {
+            if(AssetCategory == null || InfluxMeasurements.Count > 0)
+            {
+                return;
+            }
+
             Console.WriteLine("GetMeasurements");
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
             var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
