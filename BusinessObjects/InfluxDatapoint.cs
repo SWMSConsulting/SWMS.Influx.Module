@@ -15,6 +15,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 {
     [DomainComponent]
     [DefaultClassOptions]
+    [NavigationItem("Influx")]
     //[ImageName("BO_Unknown")]
     //[DefaultProperty("SampleProperty")]
     //[DefaultListViewOptions(MasterDetailMode.ListViewOnly, false, NewItemRowPosition.None)]

@@ -22,6 +22,7 @@ namespace SWMS.Influx.Module.BusinessObjects
     [DefaultClassOptions]
     //[ImageName("BO_Contact")]
     [DefaultProperty(nameof(Name))]
+    [NavigationItem("Influx")]
     public class InfluxMeasurement : BaseObject
     {
         public InfluxMeasurement()

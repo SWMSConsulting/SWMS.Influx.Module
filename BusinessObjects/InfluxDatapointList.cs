@@ -16,6 +16,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 {
     [DomainComponent]
     [DefaultClassOptions]
+    [NavigationItem("Influx")]
     public class InfluxDatapointList : IXafEntityObject/*, IObjectSpaceLink*/, INotifyPropertyChanged
     {
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)

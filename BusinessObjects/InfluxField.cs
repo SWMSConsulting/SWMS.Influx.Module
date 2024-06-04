@@ -23,6 +23,7 @@ namespace SWMS.Influx.Module.BusinessObjects
     [DefaultClassOptions]
     //[ImageName("BO_Contact")]
     [DefaultProperty(nameof(Name))]
+    [NavigationItem("Influx")]
     public class InfluxField : BaseObject, INotifyPropertyChanged
     {
         public InfluxField()

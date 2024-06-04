@@ -17,6 +17,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 {
     // Register this entity in your DbContext (usually in the BusinessObjects folder of your project) with the "public DbSet<AssetCategory> AssetCategorys { get; set; }" syntax.
     [DefaultClassOptions]
+    [NavigationItem("Influx")]
     //[ImageName("BO_Contact")]
     //[DefaultProperty("Name")]
     //[DefaultListViewOptions(MasterDetailMode.ListViewOnly, false, NewItemRowPosition.None)]

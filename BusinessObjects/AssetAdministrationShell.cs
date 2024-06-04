@@ -21,6 +21,7 @@ namespace SWMS.Influx.Module.BusinessObjects
     [DefaultClassOptions]
     //[ImageName("BO_Contact")]
     [DefaultProperty(nameof(AssetId))]
+    [NavigationItem("Influx")]
     public class AssetAdministrationShell : BaseObject
     {
         public AssetAdministrationShell()
