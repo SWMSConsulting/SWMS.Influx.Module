@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -55,7 +56,10 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public virtual string Name { get; set; }
         public virtual string InfluxIdentifier { get; set; }
-        public virtual int Duration { get; set; }
+        public virtual string RangeStart { get; set; }
+        public virtual string RangeEnd { get; set; }
+        public virtual string AggregateWindow { get; set; }
+        public virtual string AggregateFunction { get; set; }
         public virtual IList<AssetAdministrationShell> AssetAdministrationShells { get; set; }
     }
 }

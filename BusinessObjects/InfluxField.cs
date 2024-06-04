@@ -1,20 +1,9 @@
-using DevExpress.Data.Filtering;
-using DevExpress.ExpressApp;
-using DevExpress.ExpressApp.DC;
-using DevExpress.ExpressApp.Model;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
-using DevExpress.Persistent.Validation;
-using DevExpress.Xpo.Logger.Transport;
 using SWMS.Influx.Module.Services;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Xml;
 
 namespace SWMS.Influx.Module.BusinessObjects
@@ -56,6 +45,24 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
         }
 
+#nullable enable
+        [NotMapped]
+        [VisibleInListView(false)]
+        [VisibleInDetailView(false)]
+        [VisibleInLookupListView(false)]
+        public InfluxDatapoint? LatestDatapoint
+        {
+            get
+            {
+                if(Datapoints == null || Datapoints.Count < 1)
+                {
+                    return null;
+                }
+                return Datapoints.OrderByDescending(d => d.Time).FirstOrDefault();
+            }
+        }
+        #nullable disable
+
         public async Task<BindingList<InfluxDatapoint>> GetDatapoints()
         {
             Console.WriteLine("GetDatapoints");
@@ -67,15 +74,14 @@ namespace SWMS.Influx.Module.BusinessObjects
             var results = await InfluxDBService.QueryAsync(async query =>
             {
                 // TODO: data range based on user input and dynamic aggregateWindow
-                var flux = $"from(bucket:\"{bucket}\") " +
-                            $"|> range(start: -{InfluxMeasurement.AssetAdministrationShell.AssetCategory.Duration}h) " +
-                            $"|> filter(fn: (r) => " +
-                            $"r._measurement == \"{measurement}\" and " +
-                            $"r._field == \"{field}\" and " +
-                            $"r.{InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier} == \"{InfluxMeasurement.AssetAdministrationShell.AssetId}\"" +
-                            $")" +
-                            $"|> aggregateWindow(every: 1m, fn: mean)";
-
+                var flux = GetFluxQuery(
+                    bucket, 
+                    measurement, 
+                    field, 
+                    InfluxMeasurement.AssetAdministrationShell.AssetId, 
+                    InfluxMeasurement.AssetAdministrationShell.AssetCategory
+                );
+                Console.WriteLine(flux);
                 List<InfluxDatapoint> datapoints = new ();
 
                 var tables = await query.QueryAsync(flux, organization);
@@ -100,6 +106,9 @@ namespace SWMS.Influx.Module.BusinessObjects
             });
 
             Datapoints = new BindingList<InfluxDatapoint>(results);
+
+            InfluxMeasurement?.AssetAdministrationShell?.OnInfluxFieldUpdated(this);
+
             return Datapoints;
 
         }
@@ -107,6 +116,21 @@ namespace SWMS.Influx.Module.BusinessObjects
         public string GetFullName()
         {
             return $"{InfluxMeasurement.AssetAdministrationShell.AssetId} - {InfluxMeasurement.Name} - {Name}";
+        }
+
+        public string GetFluxQuery(string bucket, string measurement, string field, string assetId, AssetCategory assetCategory)
+        {
+            return $"from(bucket:\"{bucket}\") " +
+                $"|> range(start: {assetCategory.RangeStart}) " +
+                $"|> filter(fn: (r) => " +
+                $"r._measurement == \"{measurement}\" and " +
+                $"r._field == \"{field}\" and " +
+                $"r.{assetCategory.InfluxIdentifier} == \"{assetId}\"" +
+                $")" +
+                $"|> aggregateWindow(every: {assetCategory.AggregateWindow}, fn: {assetCategory.AggregateFunction})" +
+                "|> group(columns: [\"_field\", \"_time\"])" +
+                "|> sum()";
+                
         }
 
         #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)

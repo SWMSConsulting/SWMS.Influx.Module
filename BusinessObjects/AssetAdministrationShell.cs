@@ -33,6 +33,8 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual AssetCategory AssetCategory { get; set; }
         public virtual IList<InfluxMeasurement> InfluxMeasurements { get; set; } = new ObservableCollection<InfluxMeasurement>();
 
+        public virtual void OnInfluxFieldUpdated(InfluxField field) { }
+
         public async Task GetMeasurements()
         {
             Console.WriteLine("GetMeasurements");
