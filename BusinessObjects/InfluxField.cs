@@ -81,7 +81,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                     InfluxMeasurement.AssetAdministrationShell.AssetId, 
                     InfluxMeasurement.AssetAdministrationShell.AssetCategory
                 );
-                Console.WriteLine(flux);
+                // Console.WriteLine(flux);
                 List<InfluxDatapoint> datapoints = new ();
 
                 var tables = await query.QueryAsync(flux, organization);
@@ -113,10 +113,6 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         }
 
-        public string GetFullName()
-        {
-            return $"{InfluxMeasurement.AssetAdministrationShell.AssetId} - {InfluxMeasurement.Name} - {Name}";
-        }
 
         public string GetFluxQuery(string bucket, string measurement, string field, string assetId, AssetCategory assetCategory)
         {

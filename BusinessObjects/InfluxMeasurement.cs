@@ -58,6 +58,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                             $")";
 
                 var tables = await query.QueryAsync(flux, organization);
+                /*
                 tables.ForEach(table =>
                 {
                     table.Records.ForEach(record =>
@@ -65,6 +66,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                         Console.WriteLine($"{record.GetValueByKey("_value")}");
                     });
                 });
+                */
                 return tables.SelectMany(table =>
                     table.Records.Select(record =>
                         new InfluxField
