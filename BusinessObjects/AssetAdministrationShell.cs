@@ -38,7 +38,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public virtual void OnDataRefreshed() { }
 
-        public async Task RefreshData()
+        public async Task RefreshData(DateTime? start = null, DateTime? end = null)
         {
             await GetMeasurements();
 
@@ -47,14 +47,20 @@ namespace SWMS.Influx.Module.BusinessObjects
                 await measurement.GetFields();
                 foreach (var field in measurement.InfluxFields)
                 {
-                    await field.GetDatapoints();
+                    await field.GetDatapoints(start, end);
                 }
             }
 
             Datapoints = new BindingList<InfluxDatapoint>(
                 InfluxMeasurements.SelectMany(measurement => measurement.InfluxFields.SelectMany(field => field.Datapoints)).ToList()
             );
-            OnDataRefreshed();
+
+            if (start == null || end == null)
+            {
+                OnDataRefreshed();
+            }
+            
+            Console.WriteLine("Refreshed" + Datapoints.Count());
         }
 
         public async Task GetMeasurements()
@@ -64,7 +70,6 @@ namespace SWMS.Influx.Module.BusinessObjects
                 return;
             }
 
-            Console.WriteLine("GetMeasurements");
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
             var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
 

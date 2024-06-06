@@ -63,9 +63,8 @@ namespace SWMS.Influx.Module.BusinessObjects
         }
         #nullable disable
 
-        public async Task<BindingList<InfluxDatapoint>> GetDatapoints()
+        public async Task<BindingList<InfluxDatapoint>> GetDatapoints(DateTime? start = null, DateTime? end = null)
         {
-            Console.WriteLine("GetDatapoints");
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
             var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
             var measurement = InfluxMeasurement.Name;
@@ -79,7 +78,9 @@ namespace SWMS.Influx.Module.BusinessObjects
                     measurement, 
                     field, 
                     InfluxMeasurement.AssetAdministrationShell.AssetId, 
-                    InfluxMeasurement.AssetAdministrationShell.AssetCategory
+                    InfluxMeasurement.AssetAdministrationShell.AssetCategory,
+                    start,
+                    end
                 );
                 // Console.WriteLine(flux);
                 List<InfluxDatapoint> datapoints = new ();
@@ -107,17 +108,30 @@ namespace SWMS.Influx.Module.BusinessObjects
 
             Datapoints = new BindingList<InfluxDatapoint>(results);
 
-            InfluxMeasurement?.AssetAdministrationShell?.OnInfluxFieldUpdated(this);
+            if(start == null || end == null)
+            {
+                InfluxMeasurement?.AssetAdministrationShell?.OnInfluxFieldUpdated(this);
+            }
 
             return Datapoints;
 
         }
 
 
-        public string GetFluxQuery(string bucket, string measurement, string field, string assetId, AssetCategory assetCategory)
+        public string GetFluxQuery(
+            string bucket, 
+            string measurement, 
+            string field, 
+            string assetId, 
+            AssetCategory assetCategory,
+            DateTime? start = null,
+            DateTime? end = null
+        )
         {
-            return $"from(bucket:\"{bucket}\") " +
-                $"|> range(start: {assetCategory.RangeStart}) " +
+            string rangeStart = start == null ? assetCategory.RangeStart : start.Value.ToString("yyyy-MM-dd");
+
+            string query = $"from(bucket:\"{bucket}\") " +
+                $"|> range(start: {rangeStart}) " +
                 $"|> filter(fn: (r) => " +
                 $"r._measurement == \"{measurement}\" and " +
                 $"r._field == \"{field}\" and " +
@@ -126,7 +140,8 @@ namespace SWMS.Influx.Module.BusinessObjects
                 $"|> aggregateWindow(every: {assetCategory.AggregateWindow}, fn: {assetCategory.AggregateFunction})" +
                 "|> group(columns: [\"_field\", \"_time\"])" +
                 "|> sum()";
-                
+            //Console.WriteLine(query);
+            return query;
         }
 
         #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)

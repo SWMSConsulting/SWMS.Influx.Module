@@ -37,7 +37,6 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public async Task GetFields()
         {
-            Console.WriteLine("GetFields");
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
             var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
             var measurement = Name;
