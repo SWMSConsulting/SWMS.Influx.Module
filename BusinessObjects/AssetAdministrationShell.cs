@@ -54,7 +54,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             Datapoints = new BindingList<InfluxDatapoint>(
                 InfluxMeasurements.SelectMany(measurement => measurement.InfluxFields.SelectMany(field => field.Datapoints)).ToList()
             );
-            Console.WriteLine(Datapoints.Count);
+            OnDataRefreshed();
         }
 
         public async Task GetMeasurements()
