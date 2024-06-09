@@ -1,27 +1,29 @@
-﻿using DevExpress.ExpressApp.Actions;
-using DevExpress.ExpressApp;
+﻿using DevExpress.ExpressApp;
+using DevExpress.ExpressApp.Actions;
 using DevExpress.Persistent.Base;
 using SWMS.Influx.Module.BusinessObjects;
 
 namespace SWMS.Influx.Module.Controllers
 {
     public class AdministrationShellDetailViewController : ViewController
-        {
+    {
         public AdministrationShellDetailViewController()
         {
             TargetViewType = ViewType.DetailView;
             TargetObjectType = typeof(AssetAdministrationShell);
 
-            SimpleAction mySimpleAction = new SimpleAction(this, "ReloadData", PredefinedCategory.View)
+            SimpleAction mySimpleAction = new SimpleAction(this, "GetMeasurementsAction", PredefinedCategory.View)
             {
-                Caption = "Refresh Data",
+                Caption = "Refresh Measurements",
+                //ConfirmationMessage = "Refresh Measurements for this AssetAdministrationShell",
                 ImageName = "Action_Refresh"
             };
-            mySimpleAction.Execute += GetFieldsAction;
+            mySimpleAction.Execute += GetMeasurementsAction;
         }
-        private async void GetFieldsAction(object sender, SimpleActionExecuteEventArgs e)
+        private async void GetMeasurementsAction(object sender, SimpleActionExecuteEventArgs e)
         {
-            await RefreshObjectData();
+            AssetAdministrationShell currentObject = View.CurrentObject as AssetAdministrationShell;
+            await currentObject.GetMeasurements();
         }
 
         protected override void OnActivated()
@@ -33,20 +35,17 @@ namespace SWMS.Influx.Module.Controllers
         {
             base.OnViewControlsCreated();
             // Access and customize the target View control.
-            await RefreshObjectData();
+            var currentObject = View.CurrentObject as AssetAdministrationShell;
+            if (currentObject.InfluxMeasurements.Count > 0)
+            {
+                return;
+            }
+            await currentObject.GetMeasurements();
         }
         protected override void OnDeactivated()
         {
             // Unsubscribe from previously subscribed events and release other references and resources.
             base.OnDeactivated();
         }
-        private async Task RefreshObjectData()
-        {
-            var currentObject = View.CurrentObject as AssetAdministrationShell;
-            await currentObject.RefreshData();
-            View.Refresh();
-            Console.WriteLine("Data Refreshed");
-        }
     }
 }
-
