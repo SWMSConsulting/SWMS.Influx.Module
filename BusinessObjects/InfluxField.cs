@@ -30,7 +30,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
 
 
-        private BindingList<InfluxDatapoint> _Datapoints;
+        private BindingList<InfluxDatapoint> _Datapoints = new();
         [NotMapped]
         public BindingList<InfluxDatapoint> Datapoints
         {
@@ -107,11 +107,6 @@ namespace SWMS.Influx.Module.BusinessObjects
             });
 
             Datapoints = new BindingList<InfluxDatapoint>(results);
-
-            if(start == null || end == null)
-            {
-                InfluxMeasurement?.AssetAdministrationShell?.OnInfluxFieldUpdated(this);
-            }
 
             return Datapoints;
 
