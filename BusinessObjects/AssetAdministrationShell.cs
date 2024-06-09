@@ -26,43 +26,6 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public virtual IList<InfluxMeasurement> InfluxMeasurements { get; set; } = new ObservableCollection<InfluxMeasurement>();
 
-        [NotMapped]
-        public BindingList<InfluxDatapoint> Datapoints { get; set; } = new BindingList<InfluxDatapoint>();
-
-        public override void OnLoaded()
-        {
-            base.OnLoaded();
-        }
-
-        public virtual void OnInfluxFieldUpdated(InfluxField field) { }
-
-        public virtual void OnDataRefreshed() { }
-
-        public async Task RefreshData(DateTime? start = null, DateTime? end = null)
-        {
-            await GetMeasurements();
-
-            foreach (var measurement in InfluxMeasurements)
-            {
-                await measurement.GetFields();
-                foreach (var field in measurement.InfluxFields)
-                {
-                    await field.GetDatapoints(start, end);
-                }
-            }
-
-            Datapoints = new BindingList<InfluxDatapoint>(
-                InfluxMeasurements.SelectMany(measurement => measurement.InfluxFields.SelectMany(field => field.Datapoints)).ToList()
-            );
-
-            if (start == null || end == null)
-            {
-                OnDataRefreshed();
-            }
-            
-            Console.WriteLine("Refreshed" + Datapoints.Count());
-        }
-
         public async Task GetMeasurements()
         {
             if(AssetCategory == null || InfluxMeasurements.Count > 0)
@@ -126,7 +89,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                                 $")";
                     List<string> tagsInMeasurement = new();
                     var tables = await query.QueryAsync(flux, organization);
-                    /*
+
                     tables.ForEach(table =>
                     {
                         table.Records.ForEach(record =>
@@ -135,7 +98,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                             tagsInMeasurement.Add(record.GetValueByKey("_value").ToString());
                         });
                     });
-                    */
+
                     return tagsInMeasurement.Contains(AssetId);
                 });
 
@@ -144,6 +107,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                     var createdMeasurement = ObjectSpace.CreateObject<InfluxMeasurement>();
                     createdMeasurement.Name = measurement.Name;
                     createdMeasurement.AssetAdministrationShell = measurement.AssetAdministrationShell;
+                    await createdMeasurement.GetFields();
                 }
             }
 
