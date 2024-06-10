@@ -112,11 +112,6 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         }
 
-        public string GetFullName()
-        {
-            return $"{InfluxMeasurement.AssetAdministrationShell.AssetId} - {InfluxMeasurement.Name} - {Name}";
-        }
-
         public string GetFluxQuery(
             string bucket, 
             string measurement, 
