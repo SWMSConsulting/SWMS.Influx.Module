@@ -122,8 +122,9 @@ namespace SWMS.Influx.Module.BusinessObjects
             DateTime? end = null
         )
         {
-            string rangeStart = start == null ? assetCategory.RangeStart : start.Value.AddDays(-1).ToString("yyyy-MM-dd");
-            string rangeEnd = end == null ? assetCategory.RangeEnd : end.Value.ToString("yyyy-MM-dd");
+            string rangeStart = start == null ? assetCategory.RangeStart : start.Value.ToUniversalTime().ToString("yyyy-MM-ddThh:mm:ssZ");
+            string rangeEnd = end == null ? assetCategory.RangeEnd : end.Value.ToUniversalTime().ToString("yyyy-MM-ddThh:mm:ssZ");
+
             string query = $"from(bucket:\"{bucket}\") " +
                 $"|> range(start: {rangeStart}, stop: {rangeEnd}) " +
                 $"|> filter(fn: (r) => " +
