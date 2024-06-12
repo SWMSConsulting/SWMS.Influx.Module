@@ -5,6 +5,7 @@ using DevExpress.ExpressApp.Model;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using DevExpress.Persistent.Validation;
+using SWMS.Influx.Module.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -61,5 +62,15 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual string AggregateWindow { get; set; }
         public virtual string AggregateFunction { get; set; }
         public virtual IList<AssetAdministrationShell> AssetAdministrationShells { get; set; }
+
+        [Browsable(false)]
+        [RuleFromBoolProperty("ValidFluxDuration", DefaultContexts.Save, "Invalid flux duration!", UsedProperties = "AggregateWindow")]
+        public virtual bool AggregateWindowIsValid
+        {
+            get
+            {
+                return InfluxDBService.IsValidFluxDuration(AggregateWindow);
+            }
+        }
     }
 }

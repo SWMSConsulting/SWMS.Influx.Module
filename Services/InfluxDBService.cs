@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Security.Policy;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DevExpress.ExpressApp.Security;
 using InfluxDB.Client;
@@ -33,6 +34,19 @@ namespace SWMS.Influx.Module.Services
 
             var query = client.GetQueryApi();
             return await action(query);
+        }
+
+        public static string FluxDurationRegexPattern = @"^(\d+w)?(\d+d)?(\d+h)?(\d+m)?(\d+s)?$";
+
+        public static bool IsValidFluxDuration(string duration)
+        {
+            if (string.IsNullOrWhiteSpace(duration))
+            {
+                return false;
+            }
+
+            Regex regex = new Regex(FluxDurationRegexPattern);
+            return regex.IsMatch(duration);
         }
 
     }
