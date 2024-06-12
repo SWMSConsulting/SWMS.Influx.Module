@@ -63,7 +63,12 @@ namespace SWMS.Influx.Module.BusinessObjects
         }
         #nullable disable
 
-        public async Task<BindingList<InfluxDatapoint>> GetDatapoints(DateTime? start = null, DateTime? end = null)
+        public async Task<BindingList<InfluxDatapoint>> GetDatapoints(
+            DateTime? start = null, 
+            DateTime? end = null,
+            string? aggregateTime = null,
+            string? aggregateFunction = null
+            )
         {
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
             var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
@@ -80,7 +85,9 @@ namespace SWMS.Influx.Module.BusinessObjects
                     InfluxMeasurement.AssetAdministrationShell.AssetId, 
                     InfluxMeasurement.AssetAdministrationShell.AssetCategory,
                     start,
-                    end
+                    end,
+                    aggregateTime,
+                    aggregateFunction
                 );
                 // Console.WriteLine(flux);
                 List<InfluxDatapoint> datapoints = new ();
@@ -119,11 +126,16 @@ namespace SWMS.Influx.Module.BusinessObjects
             string assetId, 
             AssetCategory assetCategory,
             DateTime? start = null,
-            DateTime? end = null
+            DateTime? end = null,
+            string? aggregateTime = null,
+            string? aggregateFunction = null
         )
         {
             string rangeStart = start == null ? assetCategory.RangeStart : start.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
             string rangeEnd = end == null ? assetCategory.RangeEnd : end.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+            aggregateTime ??= assetCategory.AggregateWindow;
+            aggregateFunction ??= assetCategory.AggregateFunction;
 
             string query = $"from(bucket:\"{bucket}\") " +
                 $"|> range(start: {rangeStart}, stop: {rangeEnd}) " +
@@ -132,7 +144,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                 $"r._field == \"{field}\" and " +
                 $"r.{assetCategory.InfluxIdentifier} == \"{assetId}\"" +
                 $")" +
-                $"|> aggregateWindow(every: {assetCategory.AggregateWindow}, fn: {assetCategory.AggregateFunction})" +
+                $"|> aggregateWindow(every: {aggregateTime}, fn: {aggregateFunction})" +
                 "|> group(columns: [\"_field\", \"_time\"])" +
                 "|> sum()";
             //Console.WriteLine(query);
