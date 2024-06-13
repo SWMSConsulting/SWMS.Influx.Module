@@ -1,5 +1,6 @@
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
+using SWMS.Influx.Module.Models;
 using SWMS.Influx.Module.Services;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -67,7 +68,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             DateTime? start = null, 
             DateTime? end = null,
             string? aggregateTime = null,
-            string? aggregateFunction = null
+            FluxAggregateFunction? aggregateFunction = null
             )
         {
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
@@ -128,7 +129,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             DateTime? start = null,
             DateTime? end = null,
             string? aggregateTime = null,
-            string? aggregateFunction = null
+            FluxAggregateFunction? aggregateFunction = null
         )
         {
             string rangeStart = start == null ? assetCategory.RangeStart : start.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
@@ -144,7 +145,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                 $"r._field == \"{field}\" and " +
                 $"r.{assetCategory.InfluxIdentifier} == \"{assetId}\"" +
                 $")" +
-                $"|> aggregateWindow(every: {aggregateTime}, fn: {aggregateFunction})" +
+                $"|> aggregateWindow(every: {aggregateTime}, fn: {aggregateFunction.ToString().ToLower()})" +
                 "|> group(columns: [\"_field\", \"_time\"])" +
                 "|> sum()";
             //Console.WriteLine(query);

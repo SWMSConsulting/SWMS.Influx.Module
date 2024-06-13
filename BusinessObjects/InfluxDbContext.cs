@@ -51,5 +51,10 @@ public class InfluxEFCoreDbContext : DbContext {
             .HasMany(r => r.InfluxFields)
             .WithOne(x => x.InfluxMeasurement)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder
+            .Entity<AssetCategory>()
+            .Property(d => d.AggregateFunction)
+            .HasConversion<string>();
     }
 }
