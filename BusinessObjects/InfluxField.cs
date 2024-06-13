@@ -90,7 +90,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                     aggregateTime,
                     aggregateFunction
                 );
-                // Console.WriteLine(flux);
+                Console.WriteLine(flux);
                 List<InfluxDatapoint> datapoints = new ();
 
                 var tables = await query.QueryAsync(flux, organization);
@@ -110,6 +110,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                         }
                     });
                 });
+                Console.WriteLine(datapoints.Count);
                 return datapoints;
 
             });
@@ -146,14 +147,12 @@ namespace SWMS.Influx.Module.BusinessObjects
                 $"r.{assetCategory.InfluxIdentifier} == \"{assetId}\"" +
                 $")" +
                 $"|> aggregateWindow(every: {aggregateTime}, fn: {aggregateFunction.ToString().ToLower()})" +
-                "|> group(columns: [\"_field\", \"_time\"])" +
-                "|> sum()";
-            //Console.WriteLine(query);
+                "|> group(columns: [\"_field\", \"_time\"])";
             return query;
-        }
+        }    
 
-        #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)
-        public event PropertyChangedEventHandler PropertyChanged;
+    #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)
+    public event PropertyChangedEventHandler PropertyChanged;
         #endregion
 
     }
