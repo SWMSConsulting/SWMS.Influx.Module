@@ -34,6 +34,11 @@ public class InfluxDesignTimeDbContextFactory : IDesignTimeDbContextFactory<Infl
 public class InfluxEFCoreDbContext : DbContext {
 	public InfluxEFCoreDbContext(DbContextOptions<InfluxEFCoreDbContext> options) : base(options) {
 	}
+
+    protected InfluxEFCoreDbContext(DbContextOptions options)
+        : base(options) {
+    }
+
 	//public DbSet<ModuleInfo> ModulesInfo { get; set; }
 	public DbSet<AssetAdministrationShell> AssetAdministrationShell { get; set; }
 
