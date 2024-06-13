@@ -10,6 +10,9 @@ namespace SWMS.Influx.Module.Models
         [ValidFluxDuration(ErrorMessage = "Invalid flux duration.")]
         public string FluxDuration { get; set; }
 
+        [Required]
+        public FluxAggregateFunction FluxAggregateFunction { get; set; }
+
         [DateAfter("StartDate", ErrorMessage = "The end date must be after the start date.")]
         public DateTime EndDate { get; set; }
 
@@ -21,6 +24,7 @@ namespace SWMS.Influx.Module.Models
             EndDate = DateTimeService.RoundDateTimeToSeconds(DateTime.Now);
             StartDate = EndDate.AddHours(-3);
             FluxDuration = "1m";
+            FluxAggregateFunction = FluxAggregateFunction.Mean;
         }
     }
 }
