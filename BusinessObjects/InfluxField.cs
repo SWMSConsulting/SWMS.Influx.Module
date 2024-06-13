@@ -146,9 +146,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                 $"r.{assetCategory.InfluxIdentifier} == \"{assetId}\"" +
                 $")" +
                 $"|> aggregateWindow(every: {aggregateTime}, fn: {aggregateFunction.ToString().ToLower()})" +
-                "|> group(columns: [\"_field\", \"_time\"])" +
-                "|> sum()";
-            //Console.WriteLine(query);
+                "|> group(columns: [\"_field\", \"_time\"])";
             return query;
         }
 
