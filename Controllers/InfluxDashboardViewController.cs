@@ -9,6 +9,7 @@ using SWMS.Influx.Module.BusinessObjects;
 using DevExpress.ExpressApp.Actions;
 using DevExpress.Persistent.Base;
 using System.ComponentModel;
+using SWMS.Influx.Module.Services;
 
 namespace SWMS.Influx.Module.Controllers
 {
@@ -141,7 +142,14 @@ namespace SWMS.Influx.Module.Controllers
             foreach (object obj in influxFieldListView.SelectedObjects)
             {
                 InfluxField influxField = (InfluxField)obj;
-                await influxField.GetDatapoints();
+
+                // TODO: use values from AssetCategory for start and end inputs
+                var endDate = DateTimeService.RoundDateTimeToSeconds(DateTime.Now);
+                var startDate = endDate.AddHours(-3);
+                var aggregateTime = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
+                var aggregateFunction = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateFunction;
+
+                await influxField.GetDatapoints(startDate, endDate, aggregateTime, aggregateFunction);
                 datapoints.AddRange(influxField.Datapoints);
             }
 

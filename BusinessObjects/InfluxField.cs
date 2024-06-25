@@ -65,29 +65,32 @@ namespace SWMS.Influx.Module.BusinessObjects
         #nullable disable
 
         public async Task<BindingList<InfluxDatapoint>> GetDatapoints(
-            DateTime? start = null, 
-            DateTime? end = null,
-            string? aggregateTime = null,
-            FluxAggregateFunction? aggregateFunction = null
+            DateTime start, 
+            DateTime end,
+            string aggregateTime,
+            FluxAggregateFunction aggregateFunction
             )
         {
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
             var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
             var measurement = InfluxMeasurement.Name;
             var field = this.Name;
+            var filters = new Dictionary<string, string>
+            {
+                { "_measurement", measurement },
+                { "_field", field },
+                { InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier, InfluxMeasurement.AssetAdministrationShell.AssetId },
+            };
 
             var results = await InfluxDBService.QueryAsync(async query =>
             {
                 var flux = InfluxDBService.GetFluxQuery(
-                    bucket, 
-                    measurement, 
-                    field, 
-                    InfluxMeasurement.AssetAdministrationShell.AssetId, 
-                    InfluxMeasurement.AssetAdministrationShell.AssetCategory,
-                    start,
-                    end,
-                    aggregateTime,
-                    aggregateFunction
+                    bucket: bucket, 
+                    filters: filters,
+                    start: start,
+                    end: end,
+                    aggregateTime: aggregateTime,
+                    aggregateFunction: aggregateFunction
                 );
                 // Console.WriteLine(flux);
                 List<InfluxDatapoint> datapoints = new ();

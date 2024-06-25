@@ -121,30 +121,31 @@ namespace SWMS.Influx.Module.Services
 
         public static string GetFluxQuery(
             string bucket,
-            string measurement,
-            string field,
-            string assetId,
-            AssetCategory assetCategory,
-            DateTime? start = null,
-            DateTime? end = null,
-            string? aggregateTime = null,
-            FluxAggregateFunction? aggregateFunction = null
+            DateTime start,
+            DateTime end,
+            string aggregateTime,
+            FluxAggregateFunction aggregateFunction,
+            Dictionary<string, string>? filters = null
         )
         {
-            // TODO: take out assetCategory and fill values where called 
-            string rangeStart = start == null ? assetCategory.RangeStart : start.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
-            string rangeEnd = end == null ? assetCategory.RangeEnd : end.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+            // TODO: enable strings for start and end inputs
+            string rangeStart = start.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+            string rangeEnd = end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
 
-            aggregateTime ??= assetCategory.AggregateWindow;
-            aggregateFunction ??= assetCategory.AggregateFunction;
+            filters ??= new Dictionary<string, string>();
+
+            List<string> tagFluxFilters = new List<string>();
+            foreach ( var kvp in filters )
+            {
+                var tagFluxFilter = $"|> filter(fn: (r) => r[\"{kvp.Key}\"] == \"{kvp.Value}\")";
+                tagFluxFilters.Add( tagFluxFilter );
+            }
+
+            var fluxFilterString = String.Join(" ", tagFluxFilters);
 
             string query = $"from(bucket:\"{bucket}\") " +
                 $"|> range(start: {rangeStart}, stop: {rangeEnd}) " +
-                $"|> filter(fn: (r) => " +
-                $"r._measurement == \"{measurement}\" and " +
-                $"r._field == \"{field}\" and " +
-                $"r.{assetCategory.InfluxIdentifier} == \"{assetId}\"" +
-                $")" +
+                fluxFilterString +
                 $"|> aggregateWindow(every: {aggregateTime}, fn: {aggregateFunction.ToString().ToLower()})" +
                 "|> group(columns: [\"_field\", \"_time\"])";
             return query;

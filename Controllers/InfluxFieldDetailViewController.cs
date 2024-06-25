@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using SWMS.Influx.Module.BusinessObjects;
 using DevExpress.Persistent.Base;
+using SWMS.Influx.Module.Services;
 
 namespace SWMS.Influx.Module.Controllers
 {
@@ -27,8 +28,7 @@ namespace SWMS.Influx.Module.Controllers
         }
         private async void GetDatapointsAction(object sender, SimpleActionExecuteEventArgs e)
         {
-            InfluxField currentObject = View.CurrentObject as InfluxField;
-            await currentObject.GetDatapoints();
+            await GetDatapointsForCurrentObject();
         }
 
         protected override void OnActivated()
@@ -40,8 +40,20 @@ namespace SWMS.Influx.Module.Controllers
         {
             base.OnViewControlsCreated();
             // Access and customize the target View control.
-            var currentObject = View.CurrentObject as InfluxField;
-            await currentObject.GetDatapoints();
+            await GetDatapointsForCurrentObject();
+        }
+
+        async Task GetDatapointsForCurrentObject()
+        {
+            InfluxField currentObject = View.CurrentObject as InfluxField;
+
+            // TODO: use values from AssetCategory for start and end inputs
+            var endDate = DateTimeService.RoundDateTimeToSeconds(DateTime.Now);
+            var startDate = endDate.AddHours(-3);
+            var aggregateTime = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
+            var aggregateFunction = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateFunction;
+
+            await currentObject.GetDatapoints(startDate, endDate, aggregateTime, aggregateFunction);
         }
         protected override void OnDeactivated()
         {
