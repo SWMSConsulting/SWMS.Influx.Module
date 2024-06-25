@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using DevExpress.ExpressApp.Security;
 using InfluxDB.Client;
 using Microsoft.Extensions.Configuration;
+using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
 
 namespace SWMS.Influx.Module.Services
@@ -116,6 +117,37 @@ namespace SWMS.Influx.Module.Services
             }
 
             return result;
+        }
+
+        public static string GetFluxQuery(
+            string bucket,
+            string measurement,
+            string field,
+            string assetId,
+            AssetCategory assetCategory,
+            DateTime? start = null,
+            DateTime? end = null,
+            string? aggregateTime = null,
+            FluxAggregateFunction? aggregateFunction = null
+        )
+        {
+            // TODO: take out assetCategory and fill values where called 
+            string rangeStart = start == null ? assetCategory.RangeStart : start.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+            string rangeEnd = end == null ? assetCategory.RangeEnd : end.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+            aggregateTime ??= assetCategory.AggregateWindow;
+            aggregateFunction ??= assetCategory.AggregateFunction;
+
+            string query = $"from(bucket:\"{bucket}\") " +
+                $"|> range(start: {rangeStart}, stop: {rangeEnd}) " +
+                $"|> filter(fn: (r) => " +
+                $"r._measurement == \"{measurement}\" and " +
+                $"r._field == \"{field}\" and " +
+                $"r.{assetCategory.InfluxIdentifier} == \"{assetId}\"" +
+                $")" +
+                $"|> aggregateWindow(every: {aggregateTime}, fn: {aggregateFunction.ToString().ToLower()})" +
+                "|> group(columns: [\"_field\", \"_time\"])";
+            return query;
         }
 
     }

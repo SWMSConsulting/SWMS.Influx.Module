@@ -78,8 +78,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 
             var results = await InfluxDBService.QueryAsync(async query =>
             {
-                // TODO: data range based on user input and dynamic aggregateWindow
-                var flux = GetFluxQuery(
+                var flux = InfluxDBService.GetFluxQuery(
                     bucket, 
                     measurement, 
                     field, 
@@ -118,37 +117,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 
             return Datapoints;
 
-        }
-
-        public string GetFluxQuery(
-            string bucket, 
-            string measurement, 
-            string field, 
-            string assetId, 
-            AssetCategory assetCategory,
-            DateTime? start = null,
-            DateTime? end = null,
-            string? aggregateTime = null,
-            FluxAggregateFunction? aggregateFunction = null
-        )
-        {
-            string rangeStart = start == null ? assetCategory.RangeStart : start.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
-            string rangeEnd = end == null ? assetCategory.RangeEnd : end.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
-
-            aggregateTime ??= assetCategory.AggregateWindow;
-            aggregateFunction ??= assetCategory.AggregateFunction;
-
-            string query = $"from(bucket:\"{bucket}\") " +
-                $"|> range(start: {rangeStart}, stop: {rangeEnd}) " +
-                $"|> filter(fn: (r) => " +
-                $"r._measurement == \"{measurement}\" and " +
-                $"r._field == \"{field}\" and " +
-                $"r.{assetCategory.InfluxIdentifier} == \"{assetId}\"" +
-                $")" +
-                $"|> aggregateWindow(every: {aggregateTime}, fn: {aggregateFunction.ToString().ToLower()})" +
-                "|> group(columns: [\"_field\", \"_time\"])";
-            return query;
-        }
+        }        
 
         #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)
         public event PropertyChangedEventHandler PropertyChanged;
