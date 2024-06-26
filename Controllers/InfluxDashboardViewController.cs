@@ -10,6 +10,7 @@ using DevExpress.ExpressApp.Actions;
 using DevExpress.Persistent.Base;
 using System.ComponentModel;
 using SWMS.Influx.Module.Services;
+using SWMS.Influx.Module.Models;
 
 namespace SWMS.Influx.Module.Controllers
 {
@@ -148,8 +149,9 @@ namespace SWMS.Influx.Module.Controllers
                 var startDate = endDate.AddHours(-3);
                 var aggregateTime = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
                 var aggregateFunction = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateFunction;
+                var aggregateWindow = new FluxAggregateWindow(aggregateTime, aggregateFunction);
 
-                await influxField.GetDatapoints(startDate, endDate, aggregateTime, aggregateFunction);
+                await influxField.GetDatapoints(startDate, endDate, aggregateWindow);
                 datapoints.AddRange(influxField.Datapoints);
             }
 

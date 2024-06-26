@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using SWMS.Influx.Module.BusinessObjects;
 using DevExpress.Persistent.Base;
 using SWMS.Influx.Module.Services;
+using SWMS.Influx.Module.Models;
 
 namespace SWMS.Influx.Module.Controllers
 {
@@ -52,8 +53,9 @@ namespace SWMS.Influx.Module.Controllers
             var startDate = endDate.AddHours(-3);
             var aggregateTime = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
             var aggregateFunction = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateFunction;
+            var aggregateWindow = new FluxAggregateWindow(aggregateTime, aggregateFunction);
 
-            await currentObject.GetDatapoints(startDate, endDate, aggregateTime, aggregateFunction);
+            await currentObject.GetDatapoints(startDate, endDate, aggregateWindow);
         }
         protected override void OnDeactivated()
         {

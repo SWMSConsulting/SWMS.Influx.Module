@@ -67,8 +67,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         public async Task<BindingList<InfluxDatapoint>> GetDatapoints(
             DateTime start, 
             DateTime end,
-            string aggregateTime,
-            FluxAggregateFunction aggregateFunction
+            FluxAggregateWindow? aggregateWindow = null
             )
         {
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
@@ -89,10 +88,9 @@ namespace SWMS.Influx.Module.BusinessObjects
                     filters: filters,
                     start: start,
                     end: end,
-                    aggregateTime: aggregateTime,
-                    aggregateFunction: aggregateFunction
+                    aggregateWindow: aggregateWindow
                 );
-                // Console.WriteLine(flux);
+                Console.WriteLine(flux);
                 List<InfluxDatapoint> datapoints = new ();
 
                 var tables = await query.QueryAsync(flux, organization);

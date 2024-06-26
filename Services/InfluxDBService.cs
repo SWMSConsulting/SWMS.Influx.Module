@@ -123,8 +123,7 @@ namespace SWMS.Influx.Module.Services
             string bucket,
             DateTime start,
             DateTime end,
-            string aggregateTime,
-            FluxAggregateFunction aggregateFunction,
+            FluxAggregateWindow? aggregateWindow = null,
             Dictionary<string, string>? filters = null
         )
         {
@@ -133,20 +132,24 @@ namespace SWMS.Influx.Module.Services
             string rangeEnd = end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
 
             filters ??= new Dictionary<string, string>();
-
             List<string> tagFluxFilters = new List<string>();
             foreach ( var kvp in filters )
             {
                 var tagFluxFilter = $"|> filter(fn: (r) => r[\"{kvp.Key}\"] == \"{kvp.Value}\")";
                 tagFluxFilters.Add( tagFluxFilter );
             }
-
             var fluxFilterString = String.Join(" ", tagFluxFilters);
+
+            var aggregateWindowString = "";
+            if( aggregateWindow != null)
+            {
+                aggregateWindowString = $"|> aggregateWindow(every: {aggregateWindow.Every}, fn: {aggregateWindow.Fn.ToString().ToLower()})";
+            }
 
             string query = $"from(bucket:\"{bucket}\") " +
                 $"|> range(start: {rangeStart}, stop: {rangeEnd}) " +
                 fluxFilterString +
-                $"|> aggregateWindow(every: {aggregateTime}, fn: {aggregateFunction.ToString().ToLower()})" +
+                aggregateWindowString +
                 "|> group(columns: [\"_field\", \"_time\"])";
             return query;
         }
