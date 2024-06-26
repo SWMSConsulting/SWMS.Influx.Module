@@ -1,15 +1,10 @@
-﻿using System;
-using System.Linq;
-using DevExpress.ExpressApp;
+﻿using DevExpress.ExpressApp;
 using DevExpress.Data.Filtering;
-using System.Collections.Generic;
 using DevExpress.ExpressApp.Editors;
-using DevExpress.ExpressApp.SystemModule;
 using SWMS.Influx.Module.BusinessObjects;
 using DevExpress.ExpressApp.Actions;
 using DevExpress.Persistent.Base;
 using System.ComponentModel;
-using SWMS.Influx.Module.Services;
 using SWMS.Influx.Module.Models;
 
 namespace SWMS.Influx.Module.Controllers
@@ -144,14 +139,14 @@ namespace SWMS.Influx.Module.Controllers
             {
                 InfluxField influxField = (InfluxField)obj;
 
-                // TODO: use values from AssetCategory for start and end inputs
-                var endDate = DateTimeService.RoundDateTimeToSeconds(DateTime.Now);
-                var startDate = endDate.AddHours(-3);
+                var start = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeStart;
+                var stop = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeEnd;
+                var fluxRange = new FluxRange(start, stop);
                 var aggregateTime = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
                 var aggregateFunction = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateFunction;
                 var aggregateWindow = new FluxAggregateWindow(aggregateTime, aggregateFunction);
 
-                await influxField.GetDatapoints(startDate, endDate, aggregateWindow);
+                await influxField.GetDatapoints(fluxRange, aggregateWindow);
                 datapoints.AddRange(influxField.Datapoints);
             }
 

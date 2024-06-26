@@ -1,11 +1,6 @@
-﻿using System;
-using System.Security.Policy;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using DevExpress.ExpressApp.Security;
+﻿using System.Text.RegularExpressions;
 using InfluxDB.Client;
 using Microsoft.Extensions.Configuration;
-using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
 
 namespace SWMS.Influx.Module.Services
@@ -121,16 +116,11 @@ namespace SWMS.Influx.Module.Services
 
         public static string GetFluxQuery(
             string bucket,
-            DateTime start,
-            DateTime end,
+            FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null,
             Dictionary<string, string>? filters = null
         )
         {
-            // TODO: enable strings for start and end inputs
-            string rangeStart = start.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
-            string rangeEnd = end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
-
             filters ??= new Dictionary<string, string>();
             List<string> tagFluxFilters = new List<string>();
             foreach ( var kvp in filters )
@@ -147,7 +137,7 @@ namespace SWMS.Influx.Module.Services
             }
 
             string query = $"from(bucket:\"{bucket}\") " +
-                $"|> range(start: {rangeStart}, stop: {rangeEnd}) " +
+                $"|> range(start: {fluxRange.Start}, stop: {fluxRange.Stop}) " +
                 fluxFilterString +
                 aggregateWindowString;
             return query;

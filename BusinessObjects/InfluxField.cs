@@ -65,8 +65,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         #nullable disable
 
         public async Task<BindingList<InfluxDatapoint>> GetDatapoints(
-            DateTime start, 
-            DateTime end,
+            FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null
             )
         {
@@ -85,9 +84,8 @@ namespace SWMS.Influx.Module.BusinessObjects
             {
                 var flux = InfluxDBService.GetFluxQuery(
                     bucket: bucket, 
+                    fluxRange: fluxRange,
                     filters: filters,
-                    start: start,
-                    end: end,
                     aggregateWindow: aggregateWindow
                 );
                 Console.WriteLine(flux);
