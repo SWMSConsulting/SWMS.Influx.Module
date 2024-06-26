@@ -89,12 +89,12 @@ namespace SWMS.Influx.Module.BusinessObjects
             {
                 table.Records.ForEach(record =>
                 {
-                    if (record.GetValueByKey("_value") != null)
+                    if (record.GetValue() != null)
                     {
                         InfluxDatapoint datapoint = new InfluxDatapoint()
                         {
-                            Value = double.TryParse(record.GetValueByKey("_value").ToString(), out double v) ? v : 0.0,
-                            Time = XmlConvert.ToDateTime(record.GetValueByKey("_time").ToString(), XmlDateTimeSerializationMode.Local),
+                            Value = (double)record.GetValue(),
+                            Time = (DateTime)record.GetTimeInDateTime(),
                             InfluxField = this,
                         };
                         datapoints.Add(datapoint);
