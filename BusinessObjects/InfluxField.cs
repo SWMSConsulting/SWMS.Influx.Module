@@ -69,8 +69,6 @@ namespace SWMS.Influx.Module.BusinessObjects
             FluxAggregateWindow? aggregateWindow = null
             )
         {
-            string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
-            var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
             var measurement = InfluxMeasurement.Name;
             var field = this.Name;
             var filters = new Dictionary<string, string>
@@ -80,39 +78,33 @@ namespace SWMS.Influx.Module.BusinessObjects
                 { InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier, InfluxMeasurement.AssetAdministrationShell.AssetId },
             };
 
-            var results = await InfluxDBService.QueryAsync(async query =>
-            {
-                var flux = InfluxDBService.GetFluxQuery(
-                    bucket: bucket, 
+            var flux = InfluxDBService.GetFluxQuery(
                     fluxRange: fluxRange,
                     filters: filters,
                     aggregateWindow: aggregateWindow
                 );
-                Console.WriteLine(flux);
-                List<InfluxDatapoint> datapoints = new ();
+            Console.WriteLine(flux);
+            List<InfluxDatapoint> datapoints = new ();
 
-                var tables = await query.QueryAsync(flux, organization);
-                tables.ForEach(table =>
+            var tables = await InfluxDBService.QueryAsync(flux);
+            tables.ForEach(table =>
+            {
+                table.Records.ForEach(record =>
                 {
-                    table.Records.ForEach(record =>
+                    if (record.GetValueByKey("_value") != null)
                     {
-                        if (record.GetValueByKey("_value") != null)
+                        InfluxDatapoint datapoint = new InfluxDatapoint()
                         {
-                            InfluxDatapoint datapoint = new InfluxDatapoint()
-                            {
-                                Value = double.TryParse(record.GetValueByKey("_value").ToString(), out double v) ? v : 0.0,
-                                Time = XmlConvert.ToDateTime(record.GetValueByKey("_time").ToString(), XmlDateTimeSerializationMode.Local),
-                                InfluxField = this,
-                            };
-                            datapoints.Add(datapoint);
-                        }
-                    });
+                            Value = double.TryParse(record.GetValueByKey("_value").ToString(), out double v) ? v : 0.0,
+                            Time = XmlConvert.ToDateTime(record.GetValueByKey("_time").ToString(), XmlDateTimeSerializationMode.Local),
+                            InfluxField = this,
+                        };
+                        datapoints.Add(datapoint);
+                    }
                 });
-                return datapoints;
-
             });
 
-            Datapoints = new BindingList<InfluxDatapoint>(results);
+            Datapoints = new BindingList<InfluxDatapoint>(datapoints);
 
             return Datapoints;
 

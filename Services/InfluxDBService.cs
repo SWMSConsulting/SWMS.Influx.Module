@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using InfluxDB.Client;
-using Microsoft.Extensions.Configuration;
+using InfluxDB.Client.Core.Flux.Domain;
 using SWMS.Influx.Module.Models;
 
 namespace SWMS.Influx.Module.Services
@@ -9,6 +9,8 @@ namespace SWMS.Influx.Module.Services
     {
         private readonly static string _url = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_URL");
         private readonly static string _token = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_TOKEN");
+        private readonly static string _organization = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_ORG");
+        private readonly static string _bucket = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_BUCKET");
         private readonly static InfluxDBClient _client = new InfluxDBClient(_url, _token);
         private readonly static WriteApi _writeApi = _client.GetWriteApi();
         private readonly static QueryApi _queryApi = _client.GetQueryApi();
@@ -21,6 +23,11 @@ namespace SWMS.Influx.Module.Services
         public static async Task<T> QueryAsync<T>(Func<QueryApi, Task<T>> action)
         {
             return await action(_queryApi);
+        }
+
+        public static async Task<List<FluxTable>> QueryAsync(string flux)
+        {
+            return await _queryApi.QueryAsync(flux, _organization);
         }
 
         public static string FluxDurationRegexPattern = @"^(\d+w)?(\d+d)?(\d+h)?(\d+m)?(\d+s)?(\d+ms)?$";
@@ -105,7 +112,6 @@ namespace SWMS.Influx.Module.Services
         }
 
         public static string GetFluxQuery(
-            string bucket,
             FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null,
             Dictionary<string, string>? filters = null
@@ -126,7 +132,7 @@ namespace SWMS.Influx.Module.Services
                 aggregateWindowString = $"|> aggregateWindow(every: {aggregateWindow.Every}, fn: {aggregateWindow.Fn.ToString().ToLower()})";
             }
 
-            string query = $"from(bucket:\"{bucket}\") " +
+            string query = $"from(bucket:\"{_bucket}\") " +
                 $"|> range(start: {fluxRange.Start}, stop: {fluxRange.Stop}) " +
                 fluxFilterString +
                 aggregateWindowString;
