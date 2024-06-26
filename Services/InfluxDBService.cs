@@ -30,6 +30,17 @@ namespace SWMS.Influx.Module.Services
             return await _queryApi.QueryAsync(flux, _organization);
         }
 
+        public static async Task<List<FluxTable>> QueryAsync(
+            FluxRange fluxRange,
+            FluxAggregateWindow? aggregateWindow = null,
+            Dictionary<string, string>? filters = null
+            )
+        {
+            var flux = GetFluxQuery(fluxRange, aggregateWindow, filters);
+            //Console.WriteLine(flux);
+            return await _queryApi.QueryAsync(flux, _organization);
+        }
+
         public static string FluxDurationRegexPattern = @"^(\d+w)?(\d+d)?(\d+h)?(\d+m)?(\d+s)?(\d+ms)?$";
 
         public static bool IsValidFluxDuration(string duration)

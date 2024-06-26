@@ -78,15 +78,13 @@ namespace SWMS.Influx.Module.BusinessObjects
                 { InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier, InfluxMeasurement.AssetAdministrationShell.AssetId },
             };
 
-            var flux = InfluxDBService.GetFluxQuery(
-                    fluxRange: fluxRange,
-                    filters: filters,
-                    aggregateWindow: aggregateWindow
-                );
-            Console.WriteLine(flux);
             List<InfluxDatapoint> datapoints = new ();
 
-            var tables = await InfluxDBService.QueryAsync(flux);
+            var tables = await InfluxDBService.QueryAsync(
+                fluxRange: fluxRange,
+                filters: filters,
+                aggregateWindow: aggregateWindow
+                );
             tables.ForEach(table =>
             {
                 table.Records.ForEach(record =>
