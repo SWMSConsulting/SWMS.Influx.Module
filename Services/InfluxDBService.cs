@@ -149,8 +149,7 @@ namespace SWMS.Influx.Module.Services
             string query = $"from(bucket:\"{bucket}\") " +
                 $"|> range(start: {rangeStart}, stop: {rangeEnd}) " +
                 fluxFilterString +
-                aggregateWindowString +
-                "|> group(columns: [\"_field\", \"_time\"])";
+                aggregateWindowString;
             return query;
         }
 
