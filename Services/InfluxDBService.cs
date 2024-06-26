@@ -7,30 +7,20 @@ namespace SWMS.Influx.Module.Services
 {
     public class InfluxDBService
     {
-
-        public InfluxDBService(IConfiguration configuration)
-        {
-        }
+        private readonly static string _url = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_URL");
+        private readonly static string _token = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_TOKEN");
+        private readonly static InfluxDBClient _client = new InfluxDBClient(_url, _token);
+        private readonly static WriteApi _writeApi = _client.GetWriteApi();
+        private readonly static QueryApi _queryApi = _client.GetQueryApi();
 
         public static void Write(Action<WriteApi> action)
         {
-            var url = Environment.GetEnvironmentVariable("INFLUX_URL");
-            var _token = Environment.GetEnvironmentVariable("INFLUX_TOKEN");
-
-            using var client = new InfluxDBClient(url, _token);
-            using var write = client.GetWriteApi();
-            action(write);
+            action(_writeApi);
         }
 
         public static async Task<T> QueryAsync<T>(Func<QueryApi, Task<T>> action)
         {
-            var url = Environment.GetEnvironmentVariable("INFLUX_URL");
-            var _token = Environment.GetEnvironmentVariable("INFLUX_TOKEN");
-
-            using var client = new InfluxDBClient(url, _token);
-
-            var query = client.GetQueryApi();
-            return await action(query);
+            return await action(_queryApi);
         }
 
         public static string FluxDurationRegexPattern = @"^(\d+w)?(\d+d)?(\d+h)?(\d+m)?(\d+s)?(\d+ms)?$";
