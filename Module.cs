@@ -9,6 +9,8 @@ using DevExpress.ExpressApp.Updating;
 using DevExpress.ExpressApp.Model.Core;
 using DevExpress.ExpressApp.Model.DomainLogics;
 using DevExpress.ExpressApp.Model.NodeGenerators;
+using SWMS.Influx.Module.BusinessObjects;
+using SWMS.Influx.Module.Services;
 
 namespace SWMS.Influx.Module;
 
@@ -29,5 +31,7 @@ public sealed class InfluxModule : ModuleBase {
     public override void Setup(XafApplication application) {
         base.Setup(application);
         // Manage various aspects of the application UI and behavior at the module level.
+        var objectSpace = application.CreateObjectSpace(typeof(InfluxField));
+        InfluxDBService.SetupObjectSpace(objectSpace);
     }
 }

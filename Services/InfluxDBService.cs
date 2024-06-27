@@ -20,20 +20,11 @@ namespace SWMS.Influx.Module.Services
         private readonly static WriteApi _writeApi = _client.GetWriteApi();
         private readonly static QueryApi _queryApi = _client.GetQueryApi();
 
-        internal static IObjectSpaceFactory _objectSpaceFactory;
         internal static IObjectSpace _objectSpace;
 
-        static InfluxDBService()
+        public static void SetupObjectSpace(IObjectSpace objectSpace)
         {
-            // Is there a better way to access the object space?
-            var objectSpaceProvider = new EFCoreObjectSpaceProvider<InfluxEFCoreDbContext>(
-                 (builder, _) => builder
-                    .UseSqlServer("Server=162.55.178.76;User ID=sa;Password=test@4XERVON;Initial Catalog=XAF_Dashboard_Test_TestData2;Persist Security Info=true; TrustServerCertificate=True")
-                    .UseLazyLoadingProxies()
-                    .UseChangeTrackingProxies()
-              );
-            XafTypesInfo.Instance.RegisterEntity(typeof(InfluxField));
-            _objectSpace = objectSpaceProvider.CreateObjectSpace();
+            _objectSpace = objectSpace;
         }
 
         public static void Write(Action<WriteApi> action)
