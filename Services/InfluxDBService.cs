@@ -42,10 +42,11 @@ namespace SWMS.Influx.Module.Services
         public static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
             FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null,
-            Dictionary<string, List<string>>? filters = null
+            Dictionary<string, List<string>>? filters = null,
+            string? pipe = ""
             )
         {
-            var flux = GetFluxQuery(fluxRange, aggregateWindow, filters);
+            var flux = GetFluxQuery(fluxRange, aggregateWindow, filters, pipe);
             //Console.WriteLine(flux);
             var tables = await _queryApi.QueryAsync(flux, _organization);
             return FluxTablesToInfluxDatapoints(tables);
@@ -80,13 +81,13 @@ namespace SWMS.Influx.Module.Services
                         currentField = influxFields.FirstOrDefault(x => FluxRecordIsInfluxField(x, record));
                     }
 
-                        InfluxDatapoint datapoint = new InfluxDatapoint()
-                        {
-                            Value = (double)record.GetValue(),
-                            Time = (DateTime)record.GetTimeInDateTime(),
-                            InfluxField = currentField,
-                        };
-                        datapoints.Add(datapoint);
+                    InfluxDatapoint datapoint = new InfluxDatapoint()
+                    {
+                        Value = (double)record.GetValue(),
+                        Time = (DateTime)record.GetTimeInDateTime(),
+                        InfluxField = currentField,
+                    };
+                    datapoints.Add(datapoint);
                 });
             });
             return datapoints;
@@ -176,7 +177,8 @@ namespace SWMS.Influx.Module.Services
         public static string GetFluxQuery(
             FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null,
-            Dictionary<string, List<string>>? filters = null
+            Dictionary<string, List<string>>? filters = null,
+            string? pipe = ""
         )
         {
             filters ??= new Dictionary<string, List<string>>();
@@ -204,7 +206,8 @@ namespace SWMS.Influx.Module.Services
             string query = $"from(bucket:\"{_bucket}\") " +
                 $"|> range(start: {fluxRange.Start}, stop: {fluxRange.Stop}) " +
                 fluxFilterString +
-                aggregateWindowString;
+                aggregateWindowString +
+                pipe;
             return query;
         }
 
