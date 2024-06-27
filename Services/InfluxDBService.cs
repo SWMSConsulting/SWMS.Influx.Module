@@ -1,9 +1,6 @@
 ﻿using DevExpress.ExpressApp;
-using DevExpress.ExpressApp.Core;
-using DevExpress.ExpressApp.EFCore;
 using InfluxDB.Client;
 using InfluxDB.Client.Core.Flux.Domain;
-using Microsoft.EntityFrameworkCore;
 using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
 using System.Text.RegularExpressions;
@@ -45,7 +42,7 @@ namespace SWMS.Influx.Module.Services
         public static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
             FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null,
-            Dictionary<string, string>? filters = null
+            Dictionary<string, List<string>>? filters = null
             )
         {
             var flux = GetFluxQuery(fluxRange, aggregateWindow, filters);
@@ -181,17 +178,24 @@ namespace SWMS.Influx.Module.Services
         public static string GetFluxQuery(
             FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null,
-            Dictionary<string, string>? filters = null
+            Dictionary<string, List<string>>? filters = null
         )
         {
-            filters ??= new Dictionary<string, string>();
+            filters ??= new Dictionary<string, List<string>>();
             List<string> tagFluxFilters = new List<string>();
             foreach ( var kvp in filters )
             {
-                var tagFluxFilter = $"|> filter(fn: (r) => r[\"{kvp.Key}\"] == \"{kvp.Value}\")";
+                var arrowFunctionParts = new List<string>();
+                foreach ( var value in kvp.Value)
+                {
+                    var arrowFunctionPart = $"r[\"{kvp.Key}\"] == \"{value}\"";
+                    arrowFunctionParts.Add( arrowFunctionPart );
+                }
+                var arrowFunction = String.Join(" or ", arrowFunctionParts);
+                var tagFluxFilter = $"|> filter(fn: (r) => {arrowFunction})";
                 tagFluxFilters.Add( tagFluxFilter );
             }
-            var fluxFilterString = String.Join(" ", tagFluxFilters);
+            var fluxFilterString = String.Join("\n", tagFluxFilters);
 
             var aggregateWindowString = "";
             if( aggregateWindow != null)

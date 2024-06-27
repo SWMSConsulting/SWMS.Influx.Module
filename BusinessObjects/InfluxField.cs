@@ -75,11 +75,13 @@ namespace SWMS.Influx.Module.BusinessObjects
         {
             var measurement = InfluxMeasurement.Name;
             var field = this.Name;
-            var filters = new Dictionary<string, string>
+            var influxIdentifier = InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
+            var assetId = InfluxMeasurement.AssetAdministrationShell.AssetId;
+            var filters = new Dictionary<string, List<string>>
             {
-                { "_measurement", measurement },
-                { "_field", field },
-                { InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier, InfluxMeasurement.AssetAdministrationShell.AssetId },
+                { "_measurement", new List<string>(){ measurement } },
+                { "_field", new List<string>(){ field } },
+                { influxIdentifier, new List<string>(){ assetId } },
             };
 
             var datapoints = await InfluxDBService.QueryInfluxDatapoints(
