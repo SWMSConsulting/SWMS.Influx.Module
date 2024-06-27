@@ -1,5 +1,4 @@
-﻿using System.Text.RegularExpressions;
-using DevExpress.ExpressApp;
+﻿using DevExpress.ExpressApp;
 using DevExpress.ExpressApp.Core;
 using DevExpress.ExpressApp.EFCore;
 using InfluxDB.Client;
@@ -7,6 +6,7 @@ using InfluxDB.Client.Core.Flux.Domain;
 using Microsoft.EntityFrameworkCore;
 using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
+using System.Text.RegularExpressions;
 
 namespace SWMS.Influx.Module.Services
 {
@@ -51,7 +51,7 @@ namespace SWMS.Influx.Module.Services
             return await _queryApi.QueryAsync(flux, _organization);
         }
 
-        public static async Task<List<FluxTable>> QueryAsync(
+        public static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
             FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null,
             Dictionary<string, string>? filters = null
@@ -59,7 +59,8 @@ namespace SWMS.Influx.Module.Services
         {
             var flux = GetFluxQuery(fluxRange, aggregateWindow, filters);
             //Console.WriteLine(flux);
-            return await _queryApi.QueryAsync(flux, _organization);
+            var tables = await _queryApi.QueryAsync(flux, _organization);
+            return FluxTablesToInfluxDatapoints(tables);
         }
 
         public static bool FluxRecordIsInfluxField(InfluxField field, FluxRecord record)
