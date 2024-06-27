@@ -75,8 +75,11 @@ namespace SWMS.Influx.Module.Services
                     {
                         return;
                     }
-                    if (FluxRecordIsInfluxField(currentField, record))
+                    if (!FluxRecordIsInfluxField(currentField, record))
                     {
+                        currentField = influxFields.FirstOrDefault(x => FluxRecordIsInfluxField(x, record));
+                    }
+
                         InfluxDatapoint datapoint = new InfluxDatapoint()
                         {
                             Value = (double)record.GetValue(),
@@ -84,11 +87,6 @@ namespace SWMS.Influx.Module.Services
                             InfluxField = currentField,
                         };
                         datapoints.Add(datapoint);
-                    }
-                    else
-                    {
-                        currentField = influxFields.FirstOrDefault(x => FluxRecordIsInfluxField(x, record));
-                    }
                 });
             });
             return datapoints;
