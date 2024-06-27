@@ -5,7 +5,6 @@ using SWMS.Influx.Module.Services;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
-using System.Xml;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
@@ -46,6 +45,11 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
         }
 
+        public string GetFullName()
+        {
+            return $"{InfluxMeasurement.AssetAdministrationShell.AssetId} - {InfluxMeasurement.Name} - {Name}";
+        }
+
 #nullable enable
         [NotMapped]
         [VisibleInListView(false)]
@@ -78,29 +82,13 @@ namespace SWMS.Influx.Module.BusinessObjects
                 { InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier, InfluxMeasurement.AssetAdministrationShell.AssetId },
             };
 
-            List<InfluxDatapoint> datapoints = new ();
-
             var tables = await InfluxDBService.QueryAsync(
                 fluxRange: fluxRange,
                 filters: filters,
                 aggregateWindow: aggregateWindow
                 );
-            tables.ForEach(table =>
-            {
-                table.Records.ForEach(record =>
-                {
-                    if (record.GetValue() != null)
-                    {
-                        InfluxDatapoint datapoint = new InfluxDatapoint()
-                        {
-                            Value = (double)record.GetValue(),
-                            Time = (DateTime)record.GetTimeInDateTime(),
-                            InfluxField = this,
-                        };
-                        datapoints.Add(datapoint);
-                    }
-                });
-            });
+
+            var datapoints = InfluxDBService.FluxTablesToInfluxDatapoints(tables);
 
             Datapoints = new BindingList<InfluxDatapoint>(datapoints);
 
