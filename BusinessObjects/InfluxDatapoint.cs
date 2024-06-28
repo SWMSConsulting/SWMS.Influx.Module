@@ -103,6 +103,11 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
         }
 
+        public override string ToString()
+        {
+            return $"{InfluxField.GetFullName()}: {Time.ToLocalTime()} - {Value}";
+        }
+
         #region IXafEntityObject members (see https://documentation.devexpress.com/eXpressAppFramework/clsDevExpressExpressAppIXafEntityObjecttopic.aspx)
         void IXafEntityObject.OnCreated()
         {
