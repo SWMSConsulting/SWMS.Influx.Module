@@ -54,11 +54,17 @@ namespace SWMS.Influx.Module.Services
 
         public static bool FluxRecordIsInfluxField(InfluxField field, FluxRecord record)
         {
+            if(field == null || record == null)
+            {
+                return false;
+            }
             var measurementName = record.GetMeasurement();
             var fieldName = record.GetField();
+            var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
+            var assetId = field.InfluxMeasurement.AssetAdministrationShell.AssetId;
             var recordIsCurrentField = field.Name == fieldName &&
                 field.InfluxMeasurement.Name == measurementName &&
-                record.GetValueByKey(field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier).ToString() == field.InfluxMeasurement.AssetAdministrationShell.AssetId;
+                record.GetValueByKey(influxIdentifier).ToString() == assetId;
             return recordIsCurrentField;
         }
 
@@ -79,6 +85,10 @@ namespace SWMS.Influx.Module.Services
                     if (!FluxRecordIsInfluxField(currentField, record))
                     {
                         currentField = influxFields.FirstOrDefault(x => FluxRecordIsInfluxField(x, record));
+                    }
+                    if(currentField == null)
+                    {
+                        return;
                     }
 
                     InfluxDatapoint datapoint = new InfluxDatapoint()
