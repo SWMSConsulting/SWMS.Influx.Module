@@ -55,18 +55,14 @@ namespace SWMS.Influx.Module.BusinessObjects
         [VisibleInListView(false)]
         [VisibleInDetailView(false)]
         [VisibleInLookupListView(false)]
-        public InfluxDatapoint? LatestDatapoint
+        public InfluxDatapoint? LastDatapoint
         {
             get
             {
-                if(Datapoints == null || Datapoints.Count < 1)
-                {
-                    return null;
-                }
-                return Datapoints.OrderByDescending(d => d.Time).FirstOrDefault();
+                return InfluxDBService.GetLastDatapointForField(this);
             }
         }
-        #nullable disable
+#nullable disable
 
         public async Task<BindingList<InfluxDatapoint>> GetDatapoints(
             FluxRange fluxRange,

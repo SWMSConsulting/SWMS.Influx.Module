@@ -18,6 +18,7 @@ namespace SWMS.Influx.Module.Services
         private readonly static QueryApi _queryApi = _client.GetQueryApi();
 
         internal static IObjectSpace _objectSpace;
+        public static Dictionary<string, InfluxDatapoint> LastDatapoints { get; private set; } = new Dictionary<string, InfluxDatapoint>();
 
         public static void SetupObjectSpace(IObjectSpace objectSpace)
         {
@@ -37,6 +38,28 @@ namespace SWMS.Influx.Module.Services
         public static async Task<List<FluxTable>> QueryAsync(string flux)
         {
             return await _queryApi.QueryAsync(flux, _organization);
+        }
+
+        public static async Task SetLastDatapoints()
+        {
+            var datapoints = await QueryLastDatapoints("-24h");
+            // InfluxField.ID would also be possible as key, but is less readable
+            LastDatapoints = datapoints.ToDictionary(x => x.InfluxField.GetFullName(), x => x);
+        }
+
+        public static InfluxDatapoint GetLastDatapointForField(InfluxField field)
+        {
+            return LastDatapoints.GetValueOrDefault(field.GetFullName());
+        }
+
+        public static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
+        {
+            var fluxRange = new FluxRange(fluxDuration, "now()");
+            var datapoints = await QueryInfluxDatapoints(
+                fluxRange: fluxRange,
+                pipe: "|> last()"
+                );
+            return datapoints;
         }
 
         public static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
