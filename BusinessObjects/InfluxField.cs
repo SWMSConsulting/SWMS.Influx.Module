@@ -45,11 +45,6 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
         }
 
-        public string GetFullName()
-        {
-            return $"{InfluxMeasurement.AssetAdministrationShell.AssetId} - {InfluxMeasurement.Name} - {Name}";
-        }
-
 #nullable enable
         [NotMapped]
         [VisibleInListView(false)]

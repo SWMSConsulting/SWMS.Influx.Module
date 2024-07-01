@@ -44,12 +44,30 @@ namespace SWMS.Influx.Module.Services
         {
             var datapoints = await QueryLastDatapoints("-24h");
             // InfluxField.ID would also be possible as key, but is less readable
-            LastDatapoints = datapoints.ToDictionary(x => x.InfluxField.GetFullName(), x => x);
+            LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField), x => x);
         }
 
         public static InfluxDatapoint GetLastDatapointForField(InfluxField field)
         {
-            return LastDatapoints.GetValueOrDefault(field.GetFullName());
+            return LastDatapoints.GetValueOrDefault(GetFieldIdentifier(field));
+        }
+        public static InfluxDatapoint GetLastDatapointForField(string assetId, string measurementName, string fieldName)
+        {
+            var fieldIdentifier = GetFieldIdentifier(assetId, measurementName, fieldName);
+            return LastDatapoints.GetValueOrDefault(fieldIdentifier);
+        }
+
+        public static string GetFieldIdentifier(InfluxField field)
+        {
+            return GetFieldIdentifier(
+                field.InfluxMeasurement.AssetAdministrationShell.AssetId,
+                field.InfluxMeasurement.Name,
+                field.Name
+                );
+        }
+        public static string GetFieldIdentifier(string assetId, string measurementName, string fieldName)
+        {
+            return $"{assetId} - {measurementName} - {fieldName}";
         }
 
         public static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
