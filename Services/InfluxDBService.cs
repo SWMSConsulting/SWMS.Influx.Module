@@ -88,7 +88,7 @@ namespace SWMS.Influx.Module.Services
             )
         {
             var flux = GetFluxQuery(fluxRange, aggregateWindow, filters, pipe);
-            //Console.WriteLine(flux);
+            Console.WriteLine(flux);
             var tables = await _queryApi.QueryAsync(flux, _organization);
             return FluxTablesToInfluxDatapoints(tables);
         }
@@ -101,11 +101,11 @@ namespace SWMS.Influx.Module.Services
             }
             var measurementName = record.GetMeasurement();
             var fieldName = record.GetField();
-            var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
+            //var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
             var assetId = field.InfluxMeasurement.AssetAdministrationShell.AssetId;
             var recordIsCurrentField = field.Name == fieldName &&
-                field.InfluxMeasurement.Name == measurementName &&
-                record.GetValueByKey(influxIdentifier).ToString() == assetId;
+                field.InfluxMeasurement.Name == measurementName;
+                // && record.GetValueByKey(influxIdentifier).ToString() == assetId;
             return recordIsCurrentField;
         }
 
@@ -116,7 +116,12 @@ namespace SWMS.Influx.Module.Services
             List<InfluxDatapoint> datapoints = new();
             tables.ForEach(table =>
             {
-                InfluxField currentField = influxFields.First();
+                InfluxField? currentField = influxFields.FirstOrDefault();
+                if (currentField == null)
+                {
+                    return;
+                }
+                
                 table.Records.ForEach(record =>
                 {
                     if (record.GetValue() == null)

@@ -1,3 +1,4 @@
+using Aqua.EnumerableExtensions;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using SWMS.Influx.Module.Models;
@@ -66,20 +67,23 @@ namespace SWMS.Influx.Module.BusinessObjects
         {
             var measurement = InfluxMeasurement.Name;
             var field = this.Name;
-            var influxIdentifier = InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
+            //var influxIdentifier = InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
             var assetId = InfluxMeasurement.AssetAdministrationShell.AssetId;
             var filters = new Dictionary<string, List<string>>
             {
                 { "_measurement", new List<string>(){ measurement } },
                 { "_field", new List<string>(){ field } },
-                { influxIdentifier, new List<string>(){ assetId } },
             };
+            InfluxMeasurement.AssetAdministrationShell.InfluxTags.ForEach(x =>
+            {
+                filters.Add(x.Identifier, new List<string> { x.Value });
+            });
 
             var datapoints = await InfluxDBService.QueryInfluxDatapoints(
                 fluxRange: fluxRange,
                 filters: filters,
                 aggregateWindow: aggregateWindow
-                );
+            );
 
             Datapoints = new BindingList<InfluxDatapoint>(datapoints);
 
