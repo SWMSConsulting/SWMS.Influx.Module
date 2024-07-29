@@ -96,7 +96,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                     var flux = $"import \"influxdata/influxdb/schema\"\n" +
                                 $"schema.measurementTagValues(" +
                                 $"bucket: \"{bucket}\"," +
-                                $"tag: \"matchcode\"," + //$"tag: \"{AssetCategory.InfluxIdentifier}\"," + // TODO
+                                $"tag: \"{AssetCategory.InfluxTagTemplates.FirstOrDefault()?.Identifier}\"," +
                                 $"measurement: \"{measurement.Name}\"," +
                                 $")";
                     List<string> tagsInMeasurement = new();
