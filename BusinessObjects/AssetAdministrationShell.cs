@@ -20,6 +20,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         public abstract string AssetId { get; }
 
         [NotMapped]
+        [VisibleInDetailView(false), VisibleInListView(false), VisibleInLookupListView(false)]
         public abstract IList<InfluxTag> InfluxTags { get; }
 
 
