@@ -31,7 +31,7 @@ public sealed class InfluxModule : ModuleBase {
     public override void Setup(XafApplication application) {
         base.Setup(application);
         // Manage various aspects of the application UI and behavior at the module level.
-        var objectSpace = application.CreateObjectSpace(typeof(InfluxField));
-        InfluxDBService.SetupObjectSpace(objectSpace);
+        //var objectSpace = application.CreateObjectSpace(typeof(InfluxField));
+        //InfluxDBService.SetupObjectSpace(application.ObjectSpaceProvider);
     }
 }
