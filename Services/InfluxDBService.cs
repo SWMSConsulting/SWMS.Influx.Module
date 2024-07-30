@@ -1,12 +1,9 @@
-﻿using DevExpress.ExpressApp;
-using DevExpress.ExpressApp.Core;
-using DevExpress.XtraRichEdit.Fields;
+﻿using DevExpress.ExpressApp.Core;
 using InfluxDB.Client;
 using InfluxDB.Client.Core.Flux.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
-using System.Security.Policy;
 using System.Text.RegularExpressions;
 
 namespace SWMS.Influx.Module.Services;
@@ -23,7 +20,6 @@ public class InfluxDBService
     private QueryApi _queryApi;
 
     private IServiceScopeFactory _serviceScopeFactory;
-    public Dictionary<string, InfluxDatapoint> LastDatapoints { get; private set; } = new Dictionary<string, InfluxDatapoint>();
 
     public InfluxDBService(
         IServiceScopeFactory serviceScopeFactory
@@ -36,43 +32,7 @@ public class InfluxDBService
         _queryApi = client.GetQueryApi();
     }
 
-    public void Write(Action<WriteApi> action)
-    {
-        action(_writeApi);
-    }
-
-    public async Task<T> QueryAsync<T>(Func<QueryApi, Task<T>> action)
-    {
-        return await action(_queryApi);
-    }
-
-    public async Task<List<FluxTable>> QueryAsync(string flux)
-    {
-        return await _queryApi.QueryAsync(flux, Organization);
-    }
-
-    public async Task SetLastDatapoints()
-    {
-        var datapoints = await QueryLastDatapoints("-24h");
-        // InfluxField.ID would also be possible as key, but is less readable
-        LastDatapoints = datapoints.ToDictionary(x => x.InfluxField.GlobalIdentifer, x => x);
-    }
-
-    public InfluxDatapoint GetLastDatapointForField(InfluxField field)
-    {
-        return LastDatapoints.GetValueOrDefault(field.GlobalIdentifer);
-    }
-
-    public async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
-    {
-        var fluxRange = new FluxRange(fluxDuration, "now()");
-        var datapoints = await QueryInfluxDatapoints(
-            fluxRange: fluxRange,
-            pipe: "|> last()"
-            );
-        return datapoints;
-    }
-
+    #region Datapoints
     public async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
         FluxRange fluxRange,
         FluxAggregateWindow? aggregateWindow = null,
@@ -84,22 +44,6 @@ public class InfluxDBService
         //Console.WriteLine(flux);
         var tables = await _queryApi.QueryAsync(flux, Organization);
         return FluxTablesToInfluxDatapoints(tables);
-    }
-
-    public bool FluxRecordIsInfluxField(InfluxField field, FluxRecord record)
-    {
-        if(field == null || record == null)
-        {
-            return false;
-        }
-        var measurementName = record.GetMeasurement();
-        var fieldName = record.GetField();
-        var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
-        var assetId = field.InfluxMeasurement.AssetAdministrationShell.AssetId;
-        var recordIsCurrentField = field.Name == fieldName &&
-            field.InfluxMeasurement.Name == measurementName &&
-            record.GetValueByKey(influxIdentifier).ToString() == assetId;
-        return recordIsCurrentField;
     }
 
     public List<InfluxDatapoint> FluxTablesToInfluxDatapoints(List<FluxTable> tables)
@@ -142,9 +86,55 @@ public class InfluxDBService
             return datapoints;
         }
     }
+    #endregion
+
+
+    #region Last Datapoints
+    public Dictionary<string, InfluxDatapoint> LastDatapoints { get; private set; } = new Dictionary<string, InfluxDatapoint>();
+
+    public async Task SetLastDatapoints()
+    {
+        var datapoints = await QueryLastDatapoints("-24h");
+        // InfluxField.ID would also be possible as key, but is less readable
+        LastDatapoints = datapoints.ToDictionary(x => x.InfluxField.GlobalIdentifer, x => x);
+    }
+
+    public InfluxDatapoint GetLastDatapointForField(InfluxField field)
+    {
+        return LastDatapoints.GetValueOrDefault(field.GlobalIdentifer);
+    }
+
+    public async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
+    {
+        var fluxRange = new FluxRange(fluxDuration, "now()");
+        var datapoints = await QueryInfluxDatapoints(
+            fluxRange: fluxRange,
+            pipe: "|> last()"
+            );
+        return datapoints;
+    }
+    #endregion
+
+
+    #region Static helper functions
+    public static bool FluxRecordIsInfluxField(InfluxField field, FluxRecord record)
+    {
+        if (field == null || record == null)
+        {
+            return false;
+        }
+        var measurementName = record.GetMeasurement();
+        var fieldName = record.GetField();
+        var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
+        var assetId = field.InfluxMeasurement.AssetAdministrationShell.AssetId;
+        var recordIsCurrentField = field.Name == fieldName &&
+            field.InfluxMeasurement.Name == measurementName &&
+            record.GetValueByKey(influxIdentifier).ToString() == assetId;
+        return recordIsCurrentField;
+    }
+
 
     public static string FluxDurationRegexPattern = @"^(\d+w)?(\d+d)?(\d+h)?(\d+m)?(\d+s)?(\d+ms)?$";
-
     public static bool IsValidFluxDuration(string duration)
     {
         if (string.IsNullOrWhiteSpace(duration))
@@ -260,5 +250,24 @@ public class InfluxDBService
             pipe;
         return query;
     }
+    #endregion
+
+
+    #region Influx functions
+    public void Write(Action<WriteApi> action)
+    {
+        action(_writeApi);
+    }
+
+    public async Task<T> QueryAsync<T>(Func<QueryApi, Task<T>> action)
+    {
+        return await action(_queryApi);
+    }
+
+    public async Task<List<FluxTable>> QueryAsync(string flux)
+    {
+        return await _queryApi.QueryAsync(flux, Organization);
+    }
+    #endregion
 
 }
