@@ -33,20 +33,19 @@ namespace SWMS.Influx.Module.BusinessObjects
                 return;
             }
 
-            string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
-            var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
+            InfluxDBService influxService = ObjectSpace.ServiceProvider.GetService(typeof(InfluxDBService)) as InfluxDBService;
 
-            var results = await InfluxDBService.QueryAsync(async query =>
+            var results = await influxService.QueryAsync(async query =>
             {
                 // List measurements in bucket: https://docs.influxdata.com/influxdb/cloud/query-data/flux/explore-schema/
                 // By default, this function returns results from the last 30 days.
                 var flux = $"import \"influxdata/influxdb/schema\"\n" +
                             $"schema.measurements(" +
-                            $"bucket: \"{bucket}\"," +
+                            $"bucket: \"{influxService.Bucket}\"," +
                             $")";
                 try
                 {
-                    var tables = await query.QueryAsync(flux, organization);
+                    var tables = await query.QueryAsync(flux, influxService.Organization);
                     return tables.SelectMany(table =>
                         table.Records.Select(record =>
                             new InfluxMeasurement
@@ -77,18 +76,19 @@ namespace SWMS.Influx.Module.BusinessObjects
                 {
                     return;
                 }
-                var isAssetIdInTags = await InfluxDBService.QueryAsync(async query =>
+
+                var isAssetIdInTags = await influxService.QueryAsync(async query =>
                 {
                     // List measurements in bucket: https://docs.influxdata.com/influxdb/cloud/query-data/flux/explore-schema/
                     // By default, this function returns results from the last 30 days.
                     var flux = $"import \"influxdata/influxdb/schema\"\n" +
                                 $"schema.measurementTagValues(" +
-                                $"bucket: \"{bucket}\"," +
+                                $"bucket: \"{influxService.Bucket}\"," +
                                 $"tag: \"{AssetCategory.InfluxIdentifier}\"," +
                                 $"measurement: \"{measurement.Name}\"," +
                                 $")";
                     List<string> tagsInMeasurement = new();
-                    var tables = await query.QueryAsync(flux, organization);
+                    var tables = await query.QueryAsync(flux, influxService.Organization);
 
                     tables.ForEach(table =>
                     {

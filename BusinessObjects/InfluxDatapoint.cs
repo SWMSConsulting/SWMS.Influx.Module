@@ -4,6 +4,7 @@ using DevExpress.ExpressApp.Model;
 using DevExpress.Persistent.Base;
 using SWMS.Influx.Module.Services;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
 
 namespace SWMS.Influx.Module.BusinessObjects
@@ -100,7 +101,8 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public override string ToString()
         {
-            return $"{InfluxDBService.GetFieldIdentifier(InfluxField)}: {Time.ToLocalTime()} - {Value}";
+            return $"{InfluxField.Name}: {Time.ToLocalTime()} - {Value}";
+            //return $"{InfluxDBService.GetFieldIdentifier(InfluxField)}: {Time.ToLocalTime()} - {Value}";
         }
 
         #region IXafEntityObject members (see https://documentation.devexpress.com/eXpressAppFramework/clsDevExpressExpressAppIXafEntityObjecttopic.aspx)

@@ -37,26 +37,26 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public async Task GetFields()
         {
-            string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
-            var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
             var measurement = Name;
 
             foreach(var field in InfluxFields)
             {
-                ObjectSpace.Delete(field);                
+                ObjectSpace.Delete(field);
             }
 
-            var results = await InfluxDBService.QueryAsync(async query =>
+            InfluxDBService influxService = ObjectSpace.ServiceProvider.GetService(typeof(InfluxDBService)) as InfluxDBService;
+
+            var results = await influxService.QueryAsync(async query =>
             {
                 // List fields for measurement in bucket: https://docs.influxdata.com/influxdb/cloud/query-data/flux/explore-schema/
                 // By default, this function returns results from the last 30 days.
                 var flux = $"import \"influxdata/influxdb/schema\"\n" +
                             $"schema.measurementFieldKeys(" +
-                            $"bucket: \"{bucket}\"," +
+                            $"bucket: \"{influxService.Bucket}\"," +
                             $"measurement: \"{measurement}\"," +
                             $")";
 
-                var tables = await query.QueryAsync(flux, organization);
+                var tables = await query.QueryAsync(flux, influxService.Organization);
                 /*
                 tables.ForEach(table =>
                 {
@@ -72,7 +72,9 @@ namespace SWMS.Influx.Module.BusinessObjects
                         {
                             Name = record.GetValueByKey("_value").ToString(),
                             InfluxMeasurement = this,
-                        }));
+                        }
+                    )
+                );
             });
 
             foreach(var result in results)

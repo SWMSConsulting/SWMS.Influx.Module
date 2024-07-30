@@ -1,5 +1,6 @@
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
+using DevExpress.Xpo;
 using SWMS.Influx.Module.Models;
 using SWMS.Influx.Module.Services;
 using System.ComponentModel;
@@ -46,6 +47,20 @@ namespace SWMS.Influx.Module.BusinessObjects
         }
 
 #nullable enable
+
+        [NotMapped]
+        public string GlobalIdentifer
+        {
+            get
+            {
+                return string.Join(" - ", [
+                    InfluxMeasurement.AssetAdministrationShell.AssetId,
+                    InfluxMeasurement.Name,
+                    Name
+                ]);
+            }
+        }
+
         [NotMapped]
         [VisibleInListView(false)]
         [VisibleInDetailView(false)]
@@ -54,10 +69,10 @@ namespace SWMS.Influx.Module.BusinessObjects
         {
             get
             {
-                return InfluxDBService.GetLastDatapointForField(this);
+                InfluxDBService? influxService = ObjectSpace.ServiceProvider.GetService(typeof(InfluxDBService)) as InfluxDBService;
+                return influxService?.GetLastDatapointForField(this);
             }
         }
-#nullable disable
 
         public async Task<BindingList<InfluxDatapoint>> GetDatapoints(
             FluxRange fluxRange,
@@ -75,17 +90,23 @@ namespace SWMS.Influx.Module.BusinessObjects
                 { influxIdentifier, new List<string>(){ assetId } },
             };
 
-            var datapoints = await InfluxDBService.QueryInfluxDatapoints(
+            InfluxDBService? influxService = ObjectSpace.ServiceProvider.GetService(typeof(InfluxDBService)) as InfluxDBService;
+            if (influxService == null)
+            {
+                return new BindingList<InfluxDatapoint>();
+            }
+            var datapoints = await influxService.QueryInfluxDatapoints(
                 fluxRange: fluxRange,
                 filters: filters,
                 aggregateWindow: aggregateWindow
-                );
+            );
 
             Datapoints = new BindingList<InfluxDatapoint>(datapoints);
 
             return Datapoints;
 
-        }        
+        }   
+#nullable disable     
 
         #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)
         public event PropertyChangedEventHandler PropertyChanged;
