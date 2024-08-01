@@ -31,29 +31,6 @@ namespace SWMS.Influx.Module.BusinessObjects
         [Browsable(false)]  // Hide the entity identifier from UI.
         public Guid Oid { get; set; }
 
-        //private string sampleProperty;
-        //[XafDisplayName("My display name"), ToolTip("My hint message")]
-        //[ModelDefault("EditMask", "(000)-00"), VisibleInListView(false)]
-        //[RuleRequiredField(DefaultContexts.Save)]
-        //public string SampleProperty
-        //{
-        //    get { return sampleProperty; }
-        //    set
-        //    {
-        //        if (sampleProperty != value)
-        //        {
-        //            sampleProperty = value;
-        //            OnPropertyChanged();
-        //        }
-        //    }
-        //}
-
-        //[Action(Caption = "My UI Action", ConfirmationMessage = "Are you sure?", ImageName = "Attention", AutoCommit = true)]
-        //public void ActionMethod() {
-        //    // Trigger custom business logic for the current record in the UI (https://documentation.devexpress.com/eXpressAppFramework/CustomDocument112619.aspx).
-        //    this.SampleProperty = "Paid";
-        //}
-
         private DateTime _Time;
         [ModelDefault("DisplayFormat", "{0:dd.MM.yyyy HH:mm:ss}")]
         public DateTime Time
@@ -98,9 +75,44 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
         }
 
-        public override string ToString()
+        private BindingList<InfluxTagValue> _InfluxTagValues = new();
+        public BindingList<InfluxTagValue> InfluxTagValues
         {
-            return $"{InfluxDBService.GetFieldIdentifier(InfluxField)}: {Time.ToLocalTime()} - {Value}";
+            get { return _InfluxTagValues; }
+            set
+            {
+                if (_InfluxTagValues != value)
+                {
+                    _InfluxTagValues = value;
+                    this.OnPropertyChanged();
+                }
+            }
+        }
+
+        public string TagSetString => InfluxDBService.GetTagSetString(InfluxTagValues);
+
+        public string InfluxMetaData
+        {
+            get
+            {
+                var measurement = InfluxField.InfluxMeasurement.Name;
+                var tagSetString = TagSetString;
+                var field = $"{InfluxField.Name}";
+                return $"{measurement},{tagSetString} {field}";
+            }
+        }
+
+        public string LineProtocol
+        {
+            get
+            {
+                // Example lineprotocol: measurement,tag1=val1,tag2=val2 field1="v1",field2=1i 0000000000000000000
+                var measurement = InfluxField.InfluxMeasurement.Name;
+                var tagSetString = TagSetString;
+                var fieldSetString = $"{InfluxField.Name}={Value}";
+                var timeStamp = ((DateTimeOffset)Time).ToUnixTimeSeconds();
+                return $"{measurement},{tagSetString} {fieldSetString} {timeStamp}";
+            }
         }
 
         #region IXafEntityObject members (see https://documentation.devexpress.com/eXpressAppFramework/clsDevExpressExpressAppIXafEntityObjecttopic.aspx)

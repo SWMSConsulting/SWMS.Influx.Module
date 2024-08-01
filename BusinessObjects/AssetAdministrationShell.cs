@@ -13,26 +13,37 @@ namespace SWMS.Influx.Module.BusinessObjects
     //[ImageName("BO_Contact")]
     [DefaultProperty(nameof(AssetId))]
     [NavigationItem("Influx")]
-    public class AssetAdministrationShell : BaseObject
+    public abstract class AssetAdministrationShell : BaseObject
     {
         public AssetAdministrationShell()
         {
 
         }
 
-        public virtual string AssetId { get; set; }
+        public abstract string AssetId { get; }
 
-        public virtual AssetCategory AssetCategory { get; set; }
+        //public virtual AssetCategory AssetCategory { get; set; }
+        private AssetCategory _AssetCategory;
+        public virtual AssetCategory AssetCategory
+        { 
+            get
+            {
+                return _AssetCategory;
+            } 
+            set
+            {
+                _AssetCategory = value;
+                CreateInfluxIdentificationInstances();
+                ObjectSpace.CommitChanges();
+            } 
+        }
 
-        public virtual IList<InfluxMeasurement> InfluxMeasurements { get; set; } = new ObservableCollection<InfluxMeasurement>();
+        [ExpandObjectMembers(ExpandObjectMembers.InListView)]
+        public virtual IList<InfluxIdentificationInstance> InfluxIdentificationInstances { get; set; } = new ObservableCollection<InfluxIdentificationInstance>();
 
+        // TODO: move influx schema loading
         public async Task GetMeasurements()
         {
-            if(AssetCategory == null || InfluxMeasurements.Count > 0)
-            {
-                return;
-            }
-
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
             var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
 
@@ -42,7 +53,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                 // By default, this function returns results from the last 30 days.
                 var flux = $"import \"influxdata/influxdb/schema\"\n" +
                             $"schema.measurements(" +
-                            $"bucket: \"{bucket}\"," +
+                            $"bucket: \"{bucket}\"" +
                             $")";
                 try
                 {
@@ -52,7 +63,6 @@ namespace SWMS.Influx.Module.BusinessObjects
                             new InfluxMeasurement
                             {
                                 Name = record.GetValueByKey("_value").ToString(),
-                                AssetAdministrationShell = this,
                             }));
                 }
                 catch (Exception ex)
@@ -63,56 +73,53 @@ namespace SWMS.Influx.Module.BusinessObjects
 
             });
 
-            ObservableCollection<InfluxMeasurement> iotMeasurementsWithAssetId = new();
+            var allMeasurements = ObjectSpace.GetObjects<InfluxMeasurement>();
 
-            foreach(var measurement in InfluxMeasurements)
+            foreach(var measurement in allMeasurements)
             {
                 ObjectSpace.Delete(measurement);
             }
 
             foreach (var measurement in results)
-            {
-                //Console.WriteLine(measurement.Name);
-                if (AssetCategory == null)
-                {
-                    return;
-                }
-                var isAssetIdInTags = await InfluxDBService.QueryAsync(async query =>
-                {
-                    // List measurements in bucket: https://docs.influxdata.com/influxdb/cloud/query-data/flux/explore-schema/
-                    // By default, this function returns results from the last 30 days.
-                    var flux = $"import \"influxdata/influxdb/schema\"\n" +
-                                $"schema.measurementTagValues(" +
-                                $"bucket: \"{bucket}\"," +
-                                $"tag: \"{AssetCategory.InfluxIdentifier}\"," +
-                                $"measurement: \"{measurement.Name}\"," +
-                                $")";
-                    List<string> tagsInMeasurement = new();
-                    var tables = await query.QueryAsync(flux, organization);
-
-                    tables.ForEach(table =>
-                    {
-                        table.Records.ForEach(record =>
-                        {
-                            Console.WriteLine($"{record.GetValueByKey("_value")}");
-                            tagsInMeasurement.Add(record.GetValueByKey("_value").ToString());
-                        });
-                    });
-
-                    return tagsInMeasurement.Contains(AssetId);
-                });
-
-                if (isAssetIdInTags)
-                {
-                    var createdMeasurement = ObjectSpace.CreateObject<InfluxMeasurement>();
-                    createdMeasurement.Name = measurement.Name;
-                    createdMeasurement.AssetAdministrationShell = measurement.AssetAdministrationShell;
-                    await createdMeasurement.GetFields();
-                }
+            {                
+                var createdMeasurement = ObjectSpace.CreateObject<InfluxMeasurement>();
+                createdMeasurement.Name = measurement.Name;
+                await createdMeasurement.GetFields();
+                await createdMeasurement.GetTagKeys();                
             }
 
             ObjectSpace.CommitChanges();
 
+        }
+
+        public void CreateInfluxIdentificationInstances()
+        {
+            if (AssetCategory == null)
+            {
+                return;
+            }
+            foreach (var instance in InfluxIdentificationInstances)
+            {
+                ObjectSpace.Delete(instance);
+            }
+            var influxIdentificationTemplates = AssetCategory.InfluxIdentificationTemplates;
+            foreach (var influxIdentificationTemplate in influxIdentificationTemplates)
+            {
+                var instance = ObjectSpace.CreateObject<InfluxIdentificationInstance>();
+                instance.AssetAdministrationShell = this;
+                instance.InfluxIdentificationTemplate = influxIdentificationTemplate;
+                var bindings = influxIdentificationTemplate.InfluxTagKeyPropertyBindings;
+                foreach (var binding in bindings)
+                {
+                    var influxTagValue = new InfluxTagValue(binding, this);
+                    var objectSpaceInfluxTagValue = ObjectSpace.CreateObject<InfluxTagValue>();
+                    objectSpaceInfluxTagValue.InfluxTagKey = binding.InfluxTagKey;
+                    objectSpaceInfluxTagValue.Value = influxTagValue.Value;
+                    binding.InfluxTagKey.InfluxTagValues.Add(objectSpaceInfluxTagValue);
+                    instance.InfluxTagValues.Add(objectSpaceInfluxTagValue);
+                }
+                InfluxIdentificationInstances.Add(instance);
+            }
         }
 
     }

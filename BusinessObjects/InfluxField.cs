@@ -46,17 +46,17 @@ namespace SWMS.Influx.Module.BusinessObjects
         }
 
 #nullable enable
-        [NotMapped]
-        [VisibleInListView(false)]
-        [VisibleInDetailView(false)]
-        [VisibleInLookupListView(false)]
-        public InfluxDatapoint? LastDatapoint
-        {
-            get
-            {
-                return InfluxDBService.GetLastDatapointForField(this);
-            }
-        }
+        //[NotMapped]
+        //[VisibleInListView(false)]
+        //[VisibleInDetailView(false)]
+        //[VisibleInLookupListView(false)]
+        //public InfluxDatapoint? LastDatapoint
+        //{
+        //    get
+        //    {
+        //        return InfluxDBService.GetLastDatapointForField(this);
+        //    }
+        //}
 #nullable disable
 
         public async Task<BindingList<InfluxDatapoint>> GetDatapoints(
@@ -66,13 +66,13 @@ namespace SWMS.Influx.Module.BusinessObjects
         {
             var measurement = InfluxMeasurement.Name;
             var field = this.Name;
-            var influxIdentifier = InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
-            var assetId = InfluxMeasurement.AssetAdministrationShell.AssetId;
+            //var influxIdentifier = InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
+            //var assetId = InfluxMeasurement.AssetAdministrationShell.AssetId;
             var filters = new Dictionary<string, List<string>>
             {
                 { "_measurement", new List<string>(){ measurement } },
                 { "_field", new List<string>(){ field } },
-                { influxIdentifier, new List<string>(){ assetId } },
+                //{ influxIdentifier, new List<string>(){ assetId } },
             };
 
             var datapoints = await InfluxDBService.QueryInfluxDatapoints(
@@ -85,7 +85,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 
             return Datapoints;
 
-        }        
+        }
 
         #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)
         public event PropertyChangedEventHandler PropertyChanged;

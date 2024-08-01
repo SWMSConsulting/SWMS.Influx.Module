@@ -3,6 +3,7 @@ using InfluxDB.Client;
 using InfluxDB.Client.Core.Flux.Domain;
 using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
+using System.ComponentModel;
 using System.Text.RegularExpressions;
 
 namespace SWMS.Influx.Module.Services
@@ -40,35 +41,35 @@ namespace SWMS.Influx.Module.Services
             return await _queryApi.QueryAsync(flux, _organization);
         }
 
-        public static async Task SetLastDatapoints()
-        {
-            var datapoints = await QueryLastDatapoints("-24h");
-            // InfluxField.ID would also be possible as key, but is less readable
-            LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField), x => x);
-        }
+        //public static async Task SetLastDatapoints()
+        //{
+        //    var datapoints = await QueryLastDatapoints("-24h");
+        //    // InfluxField.ID would also be possible as key, but is less readable
+        //    LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField), x => x);
+        //}
 
-        public static InfluxDatapoint GetLastDatapointForField(InfluxField field)
-        {
-            return LastDatapoints.GetValueOrDefault(GetFieldIdentifier(field));
-        }
-        public static InfluxDatapoint GetLastDatapointForField(string assetId, string measurementName, string fieldName)
-        {
-            var fieldIdentifier = GetFieldIdentifier(assetId, measurementName, fieldName);
-            return LastDatapoints.GetValueOrDefault(fieldIdentifier);
-        }
+        //public static InfluxDatapoint GetLastDatapointForField(InfluxField field)
+        //{
+        //    return LastDatapoints.GetValueOrDefault(GetFieldIdentifier(field));
+        //}
+        //public static InfluxDatapoint GetLastDatapointForField(string assetId, string measurementName, string fieldName)
+        //{
+        //    var fieldIdentifier = GetFieldIdentifier(assetId, measurementName, fieldName);
+        //    return LastDatapoints.GetValueOrDefault(fieldIdentifier);
+        //}
 
-        public static string GetFieldIdentifier(InfluxField field)
-        {
-            return GetFieldIdentifier(
-                field.InfluxMeasurement.AssetAdministrationShell.AssetId,
-                field.InfluxMeasurement.Name,
-                field.Name
-                );
-        }
-        public static string GetFieldIdentifier(string assetId, string measurementName, string fieldName)
-        {
-            return $"{assetId} - {measurementName} - {fieldName}";
-        }
+        //public static string GetFieldIdentifier(InfluxField field)
+        //{
+        //    return GetFieldIdentifier(
+        //        field.InfluxMeasurement.AssetAdministrationShell.AssetId,
+        //        field.InfluxMeasurement.Name,
+        //        field.Name
+        //        );
+        //}
+        //public static string GetFieldIdentifier(string assetId, string measurementName, string fieldName)
+        //{
+        //    return $"{assetId} - {measurementName} - {fieldName}";
+        //}
 
         public static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
         {
@@ -101,11 +102,11 @@ namespace SWMS.Influx.Module.Services
             }
             var measurementName = record.GetMeasurement();
             var fieldName = record.GetField();
-            var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
-            var assetId = field.InfluxMeasurement.AssetAdministrationShell.AssetId;
+            //var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
+            //var assetId = field.InfluxMeasurement.AssetAdministrationShell.AssetId;
             var recordIsCurrentField = field.Name == fieldName &&
-                field.InfluxMeasurement.Name == measurementName &&
-                record.GetValueByKey(influxIdentifier).ToString() == assetId;
+                field.InfluxMeasurement.Name == measurementName;
+                //record.GetValueByKey(influxIdentifier).ToString() == assetId;
             return recordIsCurrentField;
         }
 
@@ -132,11 +133,30 @@ namespace SWMS.Influx.Module.Services
                         return;
                     }
 
+                    var tagList = new BindingList<InfluxTagValue>();
+
+                    var recordTags = record.Values.Where(x => !x.Key.StartsWith("_") && x.Key != "result" && x.Key != "table").OrderBy(x => x.Key).ToList();
+                    
+                    foreach ( var tag in recordTags )
+                    {
+                        var influxTagKeys = _objectSpace.GetObjects<InfluxTagKey>();
+                        var influxTagKey = influxTagKeys.FirstOrDefault(x => x.Name == tag.Key && x.InfluxMeasurement.Name == record.GetMeasurement());
+                        if( influxTagKey == null )
+                        {
+                            return;
+                        }
+                        var tagInfluxValue = new InfluxTagValue();
+                        tagInfluxValue.InfluxTagKey = influxTagKey;
+                        tagInfluxValue.Value = tag.Value.ToString();
+                        tagList.Add( tagInfluxValue );
+                    }
+
                     InfluxDatapoint datapoint = new InfluxDatapoint()
                     {
                         Value = (double)record.GetValue(),
                         Time = (DateTime)record.GetTimeInDateTime(),
                         InfluxField = currentField,
+                        InfluxTagValues = tagList,
                     };
                     datapoints.Add(datapoint);
                 });
@@ -251,7 +271,7 @@ namespace SWMS.Influx.Module.Services
             var aggregateWindowString = "";
             if( aggregateWindow != null)
             {
-                aggregateWindowString = $"|> aggregateWindow(every: {aggregateWindow.Every}, fn: {aggregateWindow.Fn.ToString().ToLower()})";
+                aggregateWindowString = $"|> aggregateWindow(every: {aggregateWindow.Every}, fn: {aggregateWindow.Fn.ToString().ToLower()}, createEmpty: false)";
             }
 
             string query = $"from(bucket:\"{_bucket}\") " +
@@ -262,5 +282,21 @@ namespace SWMS.Influx.Module.Services
             return query;
         }
 
+        public static string GetTagSetString(IList<InfluxTagValue> influxTagValues)
+        {
+            var orderedInfluxTagValues = influxTagValues.OrderBy(x => x.InfluxTagKey.Name);
+            return String.Join(",", orderedInfluxTagValues.Select(x => x.ToString()));
+        }
+        public static string GetTagSetString(FluxRecord record)
+        {
+            var recordTags = record.Values.Where(x => !x.Key.StartsWith("_") && x.Key != "result" && x.Key != "table").OrderBy(x => x.Key);
+            var keyValuePairStrings = recordTags.Select(x => KeyValuePairToString(x.Key, x.Value.ToString()));
+            return String.Join(",", keyValuePairStrings);
+        }
+
+        public static string KeyValuePairToString(string key, string value)
+        {
+            return $"{key}={value}";
+        }
     }
 }

@@ -48,13 +48,23 @@ public class InfluxEFCoreDbContext : DbContext {
         modelBuilder.UsePropertyAccessMode(PropertyAccessMode.PreferFieldDuringConstruction);
 
         modelBuilder.Entity<AssetAdministrationShell>()
-            .HasMany(r => r.InfluxMeasurements)
+            .HasMany(r => r.InfluxIdentificationInstances)
             .WithOne(x => x.AssetAdministrationShell)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<InfluxMeasurement>()
             .HasMany(r => r.InfluxFields)
             .WithOne(x => x.InfluxMeasurement)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<InfluxMeasurement>()
+            .HasMany(r => r.InfluxTagKeys)
+            .WithOne(x => x.InfluxMeasurement)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<InfluxTagKey>()
+            .HasMany(r => r.InfluxTagKeyPropertyBindings)
+            .WithOne(x => x.InfluxTagKey)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder

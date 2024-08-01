@@ -35,12 +35,12 @@ namespace SWMS.Influx.Module.Controllers
         {
             base.OnViewControlsCreated();
             // Access and customize the target View control.
-            var currentObject = View.CurrentObject as AssetAdministrationShell;
-            if (currentObject.InfluxMeasurements.Count > 0)
-            {
-                return;
-            }
-            await currentObject.GetMeasurements();
+            //var currentObject = View.CurrentObject as AssetAdministrationShell;
+            //if (currentObject.InfluxMeasurements.Count > 0)
+            //{
+            //    return;
+            //}
+            //await currentObject.GetMeasurements();
         }
         protected override void OnDeactivated()
         {

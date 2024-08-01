@@ -42,10 +42,16 @@ namespace SWMS.Influx.Module.Controllers
         {
             InfluxField currentObject = View.CurrentObject as InfluxField;
 
-            var start = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeStart;
-            var stop = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeEnd;
-            var fluxRange = new FluxRange(start, stop); var aggregateTime = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
-            var aggregateFunction = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateFunction;
+            //var start = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeStart;
+            //var stop = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeEnd;
+            //var fluxRange = new FluxRange(start, stop); 
+            //var aggregateTime = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
+            //var aggregateFunction = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateFunction;
+            var start = "-3h";
+            var stop = "now()";
+            var fluxRange = new FluxRange(start, stop);
+            var aggregateTime = "1m";
+            var aggregateFunction = FluxAggregateFunction.Mean;
             var aggregateWindow = new FluxAggregateWindow(aggregateTime, aggregateFunction);
 
             await currentObject.GetDatapoints(fluxRange, aggregateWindow);
