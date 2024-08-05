@@ -63,6 +63,10 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual string AggregateWindow { get; set; }
         public virtual FluxAggregateFunction AggregateFunction { get; set; }
         public virtual IList<AssetAdministrationShell> AssetAdministrationShells { get; set; }
+        public virtual IList<InfluxMeasurement> InfluxMeasurements { get; set; }
+
+        [Aggregated]
+        public virtual IList<InfluxIdentificationTemplate> InfluxIdentificationTemplates { get; set; }
 
         [Browsable(false)]
         [RuleFromBoolProperty("ValidFluxDuration", DefaultContexts.Save, "Invalid flux duration!", UsedProperties = "AggregateWindow")]

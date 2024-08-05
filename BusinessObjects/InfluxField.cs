@@ -16,11 +16,6 @@ namespace SWMS.Influx.Module.BusinessObjects
     [NavigationItem("Influx")]
     public class InfluxField : BaseObject, INotifyPropertyChanged
     {
-        public InfluxField()
-        {
-
-        }
-
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -54,7 +49,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             get
             {
                 return string.Join(" - ", [
-                    InfluxMeasurement.AssetAdministrationShell.AssetId,
+                    //InfluxMeasurement.AssetCategories.AssetId,
                     InfluxMeasurement.Name,
                     Name
                 ]);
@@ -79,6 +74,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             FluxAggregateWindow? aggregateWindow = null
             )
         {
+            /*
             var measurement = InfluxMeasurement.Name;
             var field = this.Name;
             var influxIdentifier = InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
@@ -104,7 +100,8 @@ namespace SWMS.Influx.Module.BusinessObjects
             Datapoints = new BindingList<InfluxDatapoint>(datapoints);
 
             return Datapoints;
-
+            */
+            return new BindingList<InfluxDatapoint>();
         }   
 #nullable disable     
 

@@ -1,4 +1,7 @@
-﻿using DevExpress.ExpressApp.Core;
+﻿using Aqua.EnumerableExtensions;
+using DevExpress.Data.Filtering;
+using DevExpress.ExpressApp;
+using DevExpress.ExpressApp.Core;
 using InfluxDB.Client;
 using InfluxDB.Client.Core.Flux.Domain;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +33,131 @@ public class InfluxDBService
         InfluxDBClient client = new InfluxDBClient(_url, _token);
         _writeApi = client.GetWriteApi();
         _queryApi = client.GetQueryApi();
+
+        LoadInfluxSchema();
     }
+
+    #region Influx Schema 
+    private async Task LoadInfluxSchema()
+    {
+        using (var scope = _serviceScopeFactory.CreateScope())
+        {
+            var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+            var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+            // load all measurements in bucket
+            var measurements = await LoadInfluxMeasurements(objectSpace);
+
+            measurements.ForEach(m => m.GetFields());
+            // load all fields for each measurement
+            // await LoadInfluxFields(objectSpace, measurements);
+
+            // load all tag keys for each measurement
+            // await LoadInfluxTagKeys(objectSpace, measurements);
+
+        }
+    }
+
+    private async Task<IEnumerable<InfluxMeasurement>> LoadInfluxMeasurements(IObjectSpace objectSpace)
+    {
+        // load all measurements in bucket
+        var influxMeasurements = await QueryAsync(async query =>
+        {
+            string flux = GetFluxQueryForMeasurements(Bucket);
+            var tables = await query.QueryAsync(flux, Organization);
+
+            var measurements = new List<InfluxMeasurement>();
+            tables.ForEach(table =>
+                table.Records.ForEach(record =>
+                {
+                    // check if measurement already exists
+                    string measurementName = record.GetValueByKey("_value").ToString();
+                    InfluxMeasurement? measurement = objectSpace.FindObject<InfluxMeasurement>(CriteriaOperator.Parse("Name == ?", measurementName));
+
+                    if (measurement == null)
+                    {
+                        measurement = objectSpace.CreateObject<InfluxMeasurement>();
+                        measurement.Name = measurementName;
+                    }
+                    measurements.Add(measurement);
+                })
+            );
+            return measurements;
+        });
+
+        objectSpace.CommitChanges();
+        return influxMeasurements;
+    }
+    private async Task LoadInfluxFields(IObjectSpace objectSpace, IEnumerable<InfluxMeasurement> influxMeasurements)
+    {
+
+        influxMeasurements.ForEach(measurement =>
+        {
+            // load all measurements in bucket
+            var fields = QueryAsync(async query =>
+            {
+                string flux = GetFluxQueryForFields(Bucket, measurement);
+                var tables = await query.QueryAsync(flux, Organization);
+
+
+                var f = new List<InfluxField>();
+                tables.ForEach(table =>
+                    table.Records.ForEach(record =>
+                    {
+                        // check if measurement already exists
+                        string fieldName = record.GetValueByKey("_value").ToString();
+                        InfluxField? field = measurement.InfluxFields.FirstOrDefault(x => x.Name == fieldName);
+
+                        if (field == null)
+                        {
+                            field = objectSpace.CreateObject<InfluxField>();
+                            field.Name = fieldName;
+                            measurement.InfluxFields.Add(field);
+                        }
+                    })
+                );
+                return f;
+            });
+        });
+        objectSpace.CommitChanges();
+
+    }
+
+    private async Task<IEnumerable<InfluxTagKey>> LoadInfluxTagKeys(IObjectSpace objectSpace, IEnumerable<InfluxMeasurement> influxMeasurements)
+    {
+        var influxTagKeys = new List<InfluxTagKey>();
+
+        influxMeasurements.ForEach(async measurement =>
+        {
+            // load all measurements in bucket
+            var fields = await QueryAsync(async query =>
+            {
+                string flux = GetFluxQueryForFields(Bucket, measurement);
+                var tables = await query.QueryAsync(flux, Organization);
+
+                return tables.SelectMany(table =>
+                    table.Records.Select(record =>
+                    {
+                        // check if measurement already exists
+                        string fieldName = record.GetValueByKey("_value").ToString();
+                        InfluxTagKey? field = measurement.InfluxTagKeys.FirstOrDefault(x => x.Name == fieldName);
+
+                        if (field == null)
+                        {
+                            field = objectSpace.CreateObject<InfluxTagKey>();
+                            field.Name = fieldName;
+                            field.InfluxMeasurement = measurement;
+                        }
+                        return field;
+                    })
+                );
+            });
+            influxTagKeys.AddRange(fields);
+        });
+
+        return influxTagKeys;
+    }
+    #endregion
+
 
     #region Datapoints
     public async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
@@ -115,6 +242,24 @@ public class InfluxDBService
     }
     #endregion
 
+    #region Flux Queries 
+    public static string GetFluxQueryForMeasurements(string bucket)
+    {
+        return $"import \"influxdata/influxdb/schema\"\n" +
+                    $"schema.measurements(" +
+                    $"bucket: \"{bucket}\"," +
+                    $")";
+    }
+
+    public static string GetFluxQueryForFields(string bucket, InfluxMeasurement measurement)
+    {
+        return $"import \"influxdata/influxdb/schema\"\n" +
+                            $"schema.measurementFieldKeys(" +
+                            $"bucket: \"{bucket}\"," +
+                            $"measurement: \"{measurement.Name}\"," +
+                            $")";
+    }
+    #endregion
 
     #region Static helper functions
     public static bool FluxRecordIsInfluxField(InfluxField field, FluxRecord record)
@@ -123,6 +268,7 @@ public class InfluxDBService
         {
             return false;
         }
+        /*
         var measurementName = record.GetMeasurement();
         var fieldName = record.GetField();
         var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
@@ -131,6 +277,9 @@ public class InfluxDBService
             field.InfluxMeasurement.Name == measurementName &&
             record.GetValueByKey(influxIdentifier).ToString() == assetId;
         return recordIsCurrentField;
+        */
+
+        return true;
     }
 
 
@@ -269,5 +418,6 @@ public class InfluxDBService
         return await _queryApi.QueryAsync(flux, Organization);
     }
     #endregion
+
 
 }

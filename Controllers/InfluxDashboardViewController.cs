@@ -31,7 +31,7 @@ namespace SWMS.Influx.Module.Controllers
             {
                 if (masterListView.ObjectTypeInfo.Name == "AssetAdministrationShell")
                 {
-                    detailListView.CollectionSource.Criteria[CriteriaName] = CriteriaOperator.FromLambda<InfluxMeasurement>(x => searchedObjects.Contains(x.AssetAdministrationShell.ID));
+                    //detailListView.CollectionSource.Criteria[CriteriaName] = CriteriaOperator.FromLambda<InfluxMeasurement>(x => searchedObjects.Contains(x.AssetAdministrationShell.ID));
                 }
                 else if (masterListView.ObjectTypeInfo.Name == "InfluxMeasurement")
                 {
@@ -139,6 +139,7 @@ namespace SWMS.Influx.Module.Controllers
             {
                 InfluxField influxField = (InfluxField)obj;
 
+                /*
                 var start = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeStart;
                 var stop = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeEnd;
                 var fluxRange = new FluxRange(start, stop);
@@ -148,6 +149,7 @@ namespace SWMS.Influx.Module.Controllers
 
                 await influxField.GetDatapoints(fluxRange, aggregateWindow);
                 datapoints.AddRange(influxField.Datapoints);
+                */
             }
 
             influxDatapointList.Datapoints = new BindingList<InfluxDatapoint>(datapoints);

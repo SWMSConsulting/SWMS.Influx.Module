@@ -31,8 +31,12 @@ namespace SWMS.Influx.Module.BusinessObjects
         }        
 
         public virtual string Name { get; set; }
-        public virtual AssetAdministrationShell AssetAdministrationShell { get; set; }
+        //public virtual AssetAdministrationShell AssetAdministrationShell { get; set; }
         public virtual IList<InfluxField> InfluxFields { get; set; } = new ObservableCollection<InfluxField>();
+
+        public virtual IList<InfluxTagKey> InfluxTagKeys { get; set; } = new ObservableCollection<InfluxTagKey>();
+
+        public virtual IList<AssetCategory> AssetCategories { get; set; } = new ObservableCollection<AssetCategory>();
 
 
         public async Task GetFields()
@@ -57,15 +61,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                             $")";
 
                 var tables = await query.QueryAsync(flux, influxService.Organization);
-                /*
-                tables.ForEach(table =>
-                {
-                    table.Records.ForEach(record =>
-                    {
-                        Console.WriteLine($"{record.GetValueByKey("_value")}");
-                    });
-                });
-                */
+
                 return tables.SelectMany(table =>
                     table.Records.Select(record =>
                         new InfluxField
@@ -86,9 +82,54 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
 
             ObjectSpace.CommitChanges();
-
         }
 
+        public async Task GetTagKeys()
+        {
+            var measurement = Name;
 
+            foreach (var tagKey in InfluxTagKeys)
+            {
+                ObjectSpace.Delete(tagKey);
+            }
+
+            InfluxDBService influxService = ObjectSpace.ServiceProvider.GetService(typeof(InfluxDBService)) as InfluxDBService;
+
+            var results = await influxService.QueryAsync(async query =>
+            {
+                // List tag keys for measurement in bucket: https://docs.influxdata.com/influxdb/cloud/query-data/flux/explore-schema/
+                // By default, this function returns results from the last 30 days.
+                var flux = $"import \"influxdata/influxdb/schema\"\n" +
+                            $"schema.measurementTagKeys(" +
+                            $"bucket: \"{influxService.Bucket}\"," +
+                            $"measurement: \"{measurement}\"," +
+                            $")";
+
+                var tables = await query.QueryAsync(flux, influxService.Organization);
+
+                return tables.SelectMany(table =>
+                    table.Records.Select(record =>
+                        new InfluxTagKey
+                        {
+                            Name = record.GetValueByKey("_value").ToString(),
+                            InfluxMeasurement = this,
+                        }
+                    )
+                );
+            });
+
+            foreach (var result in results)
+            {
+                if (result.Name.StartsWith("_")) 
+                    continue;
+
+                var tagKey = ObjectSpace.CreateObject<InfluxTagKey>();
+                tagKey.Name = result.Name;
+                tagKey.InfluxMeasurement = result.InfluxMeasurement;
+                InfluxTagKeys.Add(tagKey);
+            }
+
+            ObjectSpace.CommitChanges();
+        }
     }
 }

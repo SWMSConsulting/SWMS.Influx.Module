@@ -11,24 +11,20 @@ namespace SWMS.Influx.Module.BusinessObjects
     // Register this entity in your DbContext (usually in the BusinessObjects folder of your project) with the "public DbSet<AssetAdministrationShell> AssetAdministrationShells { get; set; }" syntax.
     [DefaultClassOptions]
     //[ImageName("BO_Contact")]
-    [DefaultProperty(nameof(AssetId))]
+    [DefaultProperty(nameof(Identifier))]
     [NavigationItem("Influx")]
-    public class AssetAdministrationShell : BaseObject
+    public abstract class AssetAdministrationShell : BaseObject
     {
-        public AssetAdministrationShell()
-        {
-
-        }
-
-        public virtual string AssetId { get; set; }
+        public abstract string Identifier { get; }
 
         public virtual AssetCategory AssetCategory { get; set; }
 
-        public virtual IList<InfluxMeasurement> InfluxMeasurements { get; set; } = new ObservableCollection<InfluxMeasurement>();
+
+        //public virtual IList<InfluxMeasurement> InfluxMeasurements { get; set; } = new ObservableCollection<InfluxMeasurement>();
 
         public async Task GetMeasurements()
         {
-            if(AssetCategory == null || InfluxMeasurements.Count > 0)
+            if(AssetCategory == null )
             {
                 return;
             }
@@ -51,7 +47,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                             new InfluxMeasurement
                             {
                                 Name = record.GetValueByKey("_value").ToString(),
-                                AssetAdministrationShell = this,
+                                //AssetAdministrationShell = this,
                             }));
                 }
                 catch (Exception ex)
@@ -61,7 +57,7 @@ namespace SWMS.Influx.Module.BusinessObjects
                 }
 
             });
-
+            /*
             ObservableCollection<InfluxMeasurement> iotMeasurementsWithAssetId = new();
 
             foreach(var measurement in InfluxMeasurements)
@@ -112,6 +108,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
 
             ObjectSpace.CommitChanges();
+            */
 
         }
 

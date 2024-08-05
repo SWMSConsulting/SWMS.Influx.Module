@@ -41,7 +41,7 @@ namespace SWMS.Influx.Module.Controllers
         async Task GetDatapointsForCurrentObject()
         {
             InfluxField currentObject = View.CurrentObject as InfluxField;
-
+            /*
             var start = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeStart;
             var stop = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeEnd;
             var fluxRange = new FluxRange(start, stop); var aggregateTime = currentObject.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
@@ -49,6 +49,7 @@ namespace SWMS.Influx.Module.Controllers
             var aggregateWindow = new FluxAggregateWindow(aggregateTime, aggregateFunction);
 
             await currentObject.GetDatapoints(fluxRange, aggregateWindow);
+            */
         }
         protected override void OnDeactivated()
         {

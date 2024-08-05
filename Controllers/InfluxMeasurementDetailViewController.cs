@@ -29,6 +29,7 @@ namespace SWMS.Influx.Module.Controllers
         {
             InfluxMeasurement currentObject = View.CurrentObject as InfluxMeasurement;
             await currentObject.GetFields();
+            await currentObject.GetTagKeys();
         }
 
         protected override void OnActivated()
@@ -46,6 +47,7 @@ namespace SWMS.Influx.Module.Controllers
                 return;
             }
             await currentObject.GetFields();
+            await currentObject.GetTagKeys();
         }
         protected override void OnDeactivated()
         {
