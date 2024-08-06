@@ -27,7 +27,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual IList<AssetAdministrationShell> AssetAdministrationShells { get; set; } = new ObservableCollection<AssetAdministrationShell>();
 
         [DataSourceProperty(nameof(InfluxFields))]
-        public virtual IList<InfluxField> RelevantInfluxFields { get; set; } = new ObservableCollection<InfluxField>();
+        public virtual ObservableCollection<InfluxField> RelevantInfluxFields { get; set; } = new ObservableCollection<InfluxField>();
 
         [NotMapped]
         public IList<InfluxMeasurement> InfluxMeasurements => InfluxIdentificationTemplates.Select(t => t.InfluxMeasurement).Distinct().ToList();

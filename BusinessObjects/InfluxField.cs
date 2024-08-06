@@ -2,6 +2,7 @@ using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using SWMS.Influx.Module.Models;
 using SWMS.Influx.Module.Services;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -20,7 +21,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 
 
         [NotMapped]
-        public BindingList<InfluxDatapoint> Datapoints { get; set; }
+        public ObservableCollection<InfluxDatapoint> Datapoints { get; set; } = new ObservableCollection<InfluxDatapoint>();
 
 #nullable enable
         //[NotMapped]
@@ -36,7 +37,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         //}
 #nullable disable
 
-        public async Task<BindingList<InfluxDatapoint>> GetDatapoints(
+        public async Task<ObservableCollection<InfluxDatapoint>> GetDatapoints(
             FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null,
             AssetAdministrationShell? assetAdministrationShell = null
@@ -72,14 +73,14 @@ namespace SWMS.Influx.Module.BusinessObjects
                 aggregateWindow: aggregateWindow
             );
 
-            Datapoints = new BindingList<InfluxDatapoint>(datapoints);
+            while (Datapoints.Count > 0)
+            {
+                Datapoints.RemoveAt(0);
+            }
+            datapoints.ForEach(Datapoints.Add);
+
             return Datapoints;
 
         }
-
-        #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)
-        public event PropertyChangedEventHandler PropertyChanged;
-        #endregion
-
     }
 }
