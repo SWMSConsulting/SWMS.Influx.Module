@@ -1,35 +1,17 @@
-using DevExpress.Data.Filtering;
-using DevExpress.ExpressApp;
-using DevExpress.ExpressApp.DC;
-using DevExpress.ExpressApp.Model;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
-using DevExpress.Persistent.Validation;
 using SWMS.Influx.Module.Services;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
-    // Register this entity in your DbContext (usually in the BusinessObjects folder of your project) with the "public DbSet<InfluxMeasurement> InfluxMeasurements { get; set; }" syntax.
     [DefaultClassOptions]
     //[ImageName("BO_Contact")]
     [DefaultProperty(nameof(Name))]
     [NavigationItem("Influx")]
     public class InfluxMeasurement : BaseObject
     {
-        public InfluxMeasurement()
-        {
-
-        }        
-
         public virtual string Name { get; set; }
         public virtual IList<InfluxField> InfluxFields { get; set; } = new ObservableCollection<InfluxField>();
         public virtual IList<InfluxTagKey> InfluxTagKeys { get; set; } = new ObservableCollection<InfluxTagKey>();
@@ -42,11 +24,6 @@ namespace SWMS.Influx.Module.BusinessObjects
             var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
             var measurement = Name;
 
-            foreach(var field in InfluxFields)
-            {
-                ObjectSpace.Delete(field);                
-            }
-
             var results = await InfluxDBService.QueryAsync(async query =>
             {
                 // List fields for measurement in bucket: https://docs.influxdata.com/influxdb/cloud/query-data/flux/explore-schema/
@@ -58,29 +35,24 @@ namespace SWMS.Influx.Module.BusinessObjects
                             $")";
 
                 var tables = await query.QueryAsync(flux, organization);
-                /*
-                tables.ForEach(table =>
-                {
-                    table.Records.ForEach(record =>
-                    {
-                        Console.WriteLine($"{record.GetValueByKey("_value")}");
-                    });
-                });
-                */
+                
                 return tables.SelectMany(table =>
                     table.Records.Select(record =>
                         new InfluxField
                         {
-                            Name = record.GetValueByKey("_value").ToString(),
-                            InfluxMeasurement = this,
+                            Name = record.GetValueByKey("_value").ToString()
                         }));
             });
 
             foreach(var result in results)
             {
+                if(InfluxFields.Any(f => f.Name == result.Name))
+                {
+                    continue;
+                }
+
                 var field = ObjectSpace.CreateObject<InfluxField>();
                 field.Name = result.Name;
-                field.InfluxMeasurement = result.InfluxMeasurement;
                 InfluxFields.Add(field);
             }
 
@@ -93,11 +65,6 @@ namespace SWMS.Influx.Module.BusinessObjects
             string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
             var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
             var measurement = Name;
-
-            foreach(var tag in InfluxTagKeys)
-            {
-                ObjectSpace.Delete(tag);                
-            }
 
             var results = await InfluxDBService.QueryAsync(async query =>
             {
@@ -115,20 +82,18 @@ namespace SWMS.Influx.Module.BusinessObjects
                     table.Records.Select(record =>
                         new InfluxTagKey
                         {
-                            Name = record.GetValueByKey("_value").ToString(),
-                            InfluxMeasurement = this,
+                            Name = record.GetValueByKey("_value").ToString()
                         }));
             });
 
             foreach(var result in results)
             {
-                if (result.Name.StartsWith("_"))
+                if (InfluxTagKeys.Any(f => f.Name == result.Name) || result.Name.StartsWith("_"))
                 {
                     continue;
                 }
                 var tag = ObjectSpace.CreateObject<InfluxTagKey>();
                 tag.Name = result.Name;
-                tag.InfluxMeasurement = result.InfluxMeasurement;
                 InfluxTagKeys.Add(tag);
             }
 

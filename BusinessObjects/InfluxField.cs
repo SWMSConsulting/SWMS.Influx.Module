@@ -4,46 +4,23 @@ using SWMS.Influx.Module.Models;
 using SWMS.Influx.Module.Services;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Runtime.CompilerServices;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
-    // Register this entity in your DbContext (usually in the BusinessObjects folder of your project) with the "public DbSet<InfluxField> InfluxFields { get; set; }" syntax.
     [DefaultClassOptions]
     //[ImageName("BO_Contact")]
     [DefaultProperty(nameof(Name))]
     [NavigationItem("Influx")]
-    public class InfluxField : BaseObject, INotifyPropertyChanged
-    {
-        public InfluxField()
-        {
-
-        }
-
-        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }        
+    public class InfluxField : BaseObject
+    { 
 
         public virtual string Name { get; set; }
         [ExpandObjectMembers(ExpandObjectMembers.InListView)]
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
 
 
-        private BindingList<InfluxDatapoint> _Datapoints = new();
         [NotMapped]
-        public BindingList<InfluxDatapoint> Datapoints
-        {
-            get { return _Datapoints; }
-            set
-            {
-                if (_Datapoints != value)
-                {
-                    _Datapoints = value;
-                    this.OnPropertyChanged();
-                }
-            }
-        }
+        public BindingList<InfluxDatapoint> Datapoints { get; set; }
 
 #nullable enable
         //[NotMapped]
@@ -61,28 +38,41 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public async Task<BindingList<InfluxDatapoint>> GetDatapoints(
             FluxRange fluxRange,
-            FluxAggregateWindow? aggregateWindow = null
+            FluxAggregateWindow? aggregateWindow = null,
+            AssetAdministrationShell? assetAdministrationShell = null
             )
         {
             var measurement = InfluxMeasurement.Name;
-            var field = this.Name;
-            //var influxIdentifier = InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
-            //var assetId = InfluxMeasurement.AssetAdministrationShell.AssetId;
             var filters = new Dictionary<string, List<string>>
             {
                 { "_measurement", new List<string>(){ measurement } },
-                { "_field", new List<string>(){ field } },
-                //{ influxIdentifier, new List<string>(){ assetId } },
+                { "_field", new List<string>(){ Name } },
             };
+            if(assetAdministrationShell != null)
+            {
+                assetAdministrationShell.InfluxIdentificationInstances.ToList().ForEach(instance =>
+                {
+                    instance.InfluxTagValues.ToList().ForEach(tagValue =>
+                    {
+                        if (tagValue.InfluxTagKey != null)
+                        {
+                            if (!filters.ContainsKey(tagValue.InfluxTagKey.Name))
+                            {
+                                filters[tagValue.InfluxTagKey.Name] = new List<string>();
+                            }
+                            filters[tagValue.InfluxTagKey.Name].Add(tagValue.Value);
+                        }
+                    });
+                });
+            }
 
             var datapoints = await InfluxDBService.QueryInfluxDatapoints(
                 fluxRange: fluxRange,
                 filters: filters,
                 aggregateWindow: aggregateWindow
-                );
+            );
 
             Datapoints = new BindingList<InfluxDatapoint>(datapoints);
-
             return Datapoints;
 
         }

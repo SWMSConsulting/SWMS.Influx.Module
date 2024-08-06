@@ -5,7 +5,9 @@ using InfluxDB.Client.Core.Flux.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Security.AccessControl;
 using System.Text.RegularExpressions;
 
 namespace SWMS.Influx.Module.Services
@@ -23,11 +25,11 @@ namespace SWMS.Influx.Module.Services
         
         private static IServiceScopeFactory _serviceScopeFactory;
 
-        public InfluxDBService(
-            IServiceScopeFactory serviceScopeFactory
-        )
+        public InfluxDBService(IServiceScopeFactory serviceScopeFactory)
         {
             _serviceScopeFactory = serviceScopeFactory;
+
+            QueryInfluxMeasurements();
         }
 
         public static void Write(Action<WriteApi> action)
@@ -45,35 +47,57 @@ namespace SWMS.Influx.Module.Services
             return await _queryApi.QueryAsync(flux, _organization);
         }
 
-        //public static async Task SetLastDatapoints()
-        //{
-        //    var datapoints = await QueryLastDatapoints("-24h");
-        //    // InfluxField.ID would also be possible as key, but is less readable
-        //    LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField), x => x);
-        //}
+        public static async Task<IEnumerable<InfluxMeasurement>> QueryInfluxMeasurements()
+        {
+            var results = await QueryAsync(async query =>
+            {
+                var flux = $"import \"influxdata/influxdb/schema\"\n" +
+                            $"schema.measurements(" +
+                            $"bucket: \"{_bucket}\"" +
+                            $")";
+                try
+                {
+                    var tables = await query.QueryAsync(flux, _organization);
+                    return tables.SelectMany(table =>
+                        table.Records.Select(record =>
+                            new InfluxMeasurement
+                            {
+                                Name = record.GetValueByKey("_value").ToString(),
+                            }));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                    return new ObservableCollection<InfluxMeasurement>();
+                }
+            });
 
-        //public static InfluxDatapoint GetLastDatapointForField(InfluxField field)
-        //{
-        //    return LastDatapoints.GetValueOrDefault(GetFieldIdentifier(field));
-        //}
-        //public static InfluxDatapoint GetLastDatapointForField(string assetId, string measurementName, string fieldName)
-        //{
-        //    var fieldIdentifier = GetFieldIdentifier(assetId, measurementName, fieldName);
-        //    return LastDatapoints.GetValueOrDefault(fieldIdentifier);
-        //}
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+                var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
 
-        //public static string GetFieldIdentifier(InfluxField field)
-        //{
-        //    return GetFieldIdentifier(
-        //        field.InfluxMeasurement.AssetAdministrationShell.AssetId,
-        //        field.InfluxMeasurement.Name,
-        //        field.Name
-        //        );
-        //}
-        //public static string GetFieldIdentifier(string assetId, string measurementName, string fieldName)
-        //{
-        //    return $"{assetId} - {measurementName} - {fieldName}";
-        //}
+                var allMeasurements = objectSpace.GetObjects<InfluxMeasurement>();
+
+                foreach (var measurement in results)
+                {
+                    var existingMeasurement = allMeasurements.FirstOrDefault(x => x.Name == measurement.Name);
+                    if (existingMeasurement == null)
+                    {
+                        existingMeasurement = objectSpace.CreateObject<InfluxMeasurement>();
+                        existingMeasurement.Name = measurement.Name;
+                    }
+
+                    await existingMeasurement.GetFields();
+                    await existingMeasurement.GetTagKeys();
+                }
+
+                objectSpace.CommitChanges();
+
+                var updatedMeasurements = objectSpace.GetObjects<InfluxMeasurement>();
+                return updatedMeasurements;
+            }
+        }
 
         public static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
         {
