@@ -1,6 +1,8 @@
 ﻿using DevExpress.ExpressApp;
+using DevExpress.ExpressApp.Core;
 using InfluxDB.Client;
 using InfluxDB.Client.Core.Flux.Domain;
+using Microsoft.Extensions.DependencyInjection;
 using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
 using System.ComponentModel;
@@ -17,13 +19,15 @@ namespace SWMS.Influx.Module.Services
         private readonly static InfluxDBClient _client = new InfluxDBClient(_url, _token);
         private readonly static WriteApi _writeApi = _client.GetWriteApi();
         private readonly static QueryApi _queryApi = _client.GetQueryApi();
-
-        internal static IObjectSpace _objectSpace;
         public static Dictionary<string, InfluxDatapoint> LastDatapoints { get; private set; } = new Dictionary<string, InfluxDatapoint>();
+        
+        private static IServiceScopeFactory _serviceScopeFactory;
 
-        public static void SetupObjectSpace(IObjectSpace objectSpace)
+        public InfluxDBService(
+            IServiceScopeFactory serviceScopeFactory
+        )
         {
-            _objectSpace = objectSpace;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         public static void Write(Action<WriteApi> action)
@@ -113,55 +117,62 @@ namespace SWMS.Influx.Module.Services
         public static List<InfluxDatapoint> FluxTablesToInfluxDatapoints(List<FluxTable> tables)
         {
             // TODO: optimize by keeping local List / HashSet of InfluxFields instead of loading from ObjectSpace
-            var influxFields = _objectSpace.GetObjects<InfluxField>();
-            List<InfluxDatapoint> datapoints = new();
-            tables.ForEach(table =>
+
+            using (var scope = _serviceScopeFactory.CreateScope())
             {
-                InfluxField currentField = influxFields.First();
-                table.Records.ForEach(record =>
+                var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+                var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+                var influxFields = objectSpace.GetObjects<InfluxField>();
+                
+                List<InfluxDatapoint> datapoints = new();
+                tables.ForEach(table =>
                 {
-                    if (record.GetValue() == null)
+                    InfluxField currentField = influxFields.First();
+                    table.Records.ForEach(record =>
                     {
-                        return;
-                    }
-                    if (!FluxRecordIsInfluxField(currentField, record))
-                    {
-                        currentField = influxFields.FirstOrDefault(x => FluxRecordIsInfluxField(x, record));
-                    }
-                    if(currentField == null)
-                    {
-                        return;
-                    }
-
-                    var tagList = new BindingList<InfluxTagValue>();
-
-                    var recordTags = record.Values.Where(x => !x.Key.StartsWith("_") && x.Key != "result" && x.Key != "table").OrderBy(x => x.Key).ToList();
-                    
-                    foreach ( var tag in recordTags )
-                    {
-                        var influxTagKeys = _objectSpace.GetObjects<InfluxTagKey>();
-                        var influxTagKey = influxTagKeys.FirstOrDefault(x => x.Name == tag.Key && x.InfluxMeasurement.Name == record.GetMeasurement());
-                        if( influxTagKey == null )
+                        if (record.GetValue() == null)
                         {
                             return;
                         }
-                        var tagInfluxValue = new InfluxTagValue();
-                        tagInfluxValue.InfluxTagKey = influxTagKey;
-                        tagInfluxValue.Value = tag.Value.ToString();
-                        tagList.Add( tagInfluxValue );
-                    }
+                        if (!FluxRecordIsInfluxField(currentField, record))
+                        {
+                            currentField = influxFields.FirstOrDefault(x => FluxRecordIsInfluxField(x, record));
+                        }
+                        if (currentField == null)
+                        {
+                            return;
+                        }
 
-                    InfluxDatapoint datapoint = new InfluxDatapoint()
-                    {
-                        Value = (double)record.GetValue(),
-                        Time = (DateTime)record.GetTimeInDateTime(),
-                        InfluxField = currentField,
-                        InfluxTagValues = tagList,
-                    };
-                    datapoints.Add(datapoint);
+                        var tagList = new BindingList<InfluxTagValue>();
+
+                        var recordTags = record.Values.Where(x => !x.Key.StartsWith("_") && x.Key != "result" && x.Key != "table").OrderBy(x => x.Key).ToList();
+
+                        foreach (var tag in recordTags)
+                        {
+                            var influxTagKeys = objectSpace.GetObjects<InfluxTagKey>();
+                            var influxTagKey = influxTagKeys.FirstOrDefault(x => x.Name == tag.Key && x.InfluxMeasurement.Name == record.GetMeasurement());
+                            if (influxTagKey == null)
+                            {
+                                return;
+                            }
+                            var tagInfluxValue = new InfluxTagValue();
+                            tagInfluxValue.InfluxTagKey = influxTagKey;
+                            tagInfluxValue.Value = tag.Value.ToString();
+                            tagList.Add(tagInfluxValue);
+                        }
+
+                        InfluxDatapoint datapoint = new InfluxDatapoint()
+                        {
+                            Value = (double)record.GetValue(),
+                            Time = (DateTime)record.GetTimeInDateTime(),
+                            InfluxField = currentField,
+                            InfluxTagValues = tagList,
+                        };
+                        datapoints.Add(datapoint);
+                    });
                 });
-            });
-            return datapoints;
+                return datapoints;
+            }
         }
 
         public static string FluxDurationRegexPattern = @"^(\d+w)?(\d+d)?(\d+h)?(\d+m)?(\d+s)?(\d+ms)?$";
