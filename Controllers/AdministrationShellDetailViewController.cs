@@ -23,7 +23,7 @@ namespace SWMS.Influx.Module.Controllers
         private async void GetMeasurementsAction(object sender, SimpleActionExecuteEventArgs e)
         {
             AssetAdministrationShell currentObject = View.CurrentObject as AssetAdministrationShell;
-            await currentObject.GetMeasurements();
+            //await currentObject.GetMeasurements();
         }
 
         protected override void OnActivated()
