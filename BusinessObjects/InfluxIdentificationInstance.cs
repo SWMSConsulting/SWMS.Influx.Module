@@ -1,19 +1,8 @@
-using DevExpress.Data.Filtering;
-using DevExpress.ExpressApp;
-using DevExpress.ExpressApp.DC;
-using DevExpress.ExpressApp.Model;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
-using DevExpress.Persistent.Validation;
-using FastMember;
 using SWMS.Influx.Module.Services;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
@@ -30,7 +19,14 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual InfluxIdentificationTemplate InfluxIdentificationTemplate { get; set; }
 
         public virtual IList<InfluxTagValue> InfluxTagValues { get; set; } = new ObservableCollection<InfluxTagValue>();
+
+        [NotMapped]
+        public InfluxMeasurement InfluxMeasurement => InfluxIdentificationTemplate.InfluxMeasurement;
+
+        [NotMapped]
         public string TagSetString => InfluxDBService.GetTagSetString(InfluxTagValues);
+        
+        [NotMapped]
         public List<KeyValuePair<string, object>> TagKeyValuePairs => InfluxTagValues.Select(x => x.KeyValuePair).ToList();
     }
 }

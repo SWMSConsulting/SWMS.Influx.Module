@@ -4,6 +4,7 @@ using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using DevExpress.Persistent.Validation;
 using SWMS.Influx.Module.Models;
+using SWMS.Influx.Module.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -36,6 +37,20 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         [NotMapped]
         public IList<InfluxDatapoint> InfluxDatapoints => InfluxFields.SelectMany(f => f.Datapoints).ToList();
+
+
+        public double? GetLastDatapoint(string measurement, string field)
+        {
+            var identification = InfluxIdentificationInstances.Where(i => i.InfluxMeasurement.Name == measurement).FirstOrDefault();
+            if (identification == null)
+                return null;
+
+            var influxField = identification?.InfluxMeasurement.InfluxFields.Where(f => f.Name == field).FirstOrDefault();
+            if (influxField == null)
+                return null;
+
+            return InfluxDBService.GetLastDatapointForField(influxField, identification)?.Value;
+        }
 
 
         [Action(

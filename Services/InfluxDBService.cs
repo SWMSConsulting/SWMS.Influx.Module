@@ -29,7 +29,13 @@ namespace SWMS.Influx.Module.Services
         {
             _serviceScopeFactory = serviceScopeFactory;
 
-            QueryInfluxMeasurements();
+            InitializeInfluxSchema();
+        }
+
+        private static async void InitializeInfluxSchema()
+        {
+            await QueryInfluxMeasurements();
+            await SetLastDatapoints();
         }
 
         public static void Write(Action<WriteApi> action)
@@ -99,7 +105,30 @@ namespace SWMS.Influx.Module.Services
             }
         }
 
-        public static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
+
+
+        public static async Task SetLastDatapoints()
+        {
+            var datapoints = await QueryLastDatapoints("-24h");
+            // InfluxField.ID would also be possible as key, but is less readable
+            LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField, x.InfluxTagValues), x => x);
+        }
+
+        public static InfluxDatapoint GetLastDatapointForField(InfluxField field, InfluxIdentificationInstance identification)
+        {
+            return LastDatapoints.GetValueOrDefault(GetFieldIdentifier(field, identification));
+        }
+
+        private static string GetFieldIdentifier(InfluxField field, InfluxIdentificationInstance identification)
+        {
+            return GetFieldIdentifier(field, identification.InfluxTagValues);
+        }
+        private static string GetFieldIdentifier(InfluxField field, IList<InfluxTagValue> influxTagValues)
+        {
+            return $"{field.InfluxMeasurement.Name}_{field.Name}_{GetTagSetString(influxTagValues)}";
+        }
+
+        private static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
         {
             var fluxRange = new FluxRange(fluxDuration, "now()");
             var datapoints = await QueryInfluxDatapoints(
