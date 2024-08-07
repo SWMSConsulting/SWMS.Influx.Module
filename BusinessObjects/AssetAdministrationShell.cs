@@ -38,10 +38,14 @@ namespace SWMS.Influx.Module.BusinessObjects
         [NotMapped]
         public IList<InfluxDatapoint> InfluxDatapoints => InfluxFields.SelectMany(f => f.Datapoints).ToList();
 
+        public InfluxIdentificationInstance? GetInfluxIdentificationInstanceForMeasurement(string measurement)
+        {
+            return InfluxIdentificationInstances.Where(i => i.InfluxMeasurement.Name == measurement).FirstOrDefault();
+        }
 
         public double? GetLastDatapoint(string measurement, string field)
         {
-            var identification = InfluxIdentificationInstances.Where(i => i.InfluxMeasurement.Name == measurement).FirstOrDefault();
+            var identification = GetInfluxIdentificationInstanceForMeasurement(measurement);
             if (identification == null)
                 return null;
 

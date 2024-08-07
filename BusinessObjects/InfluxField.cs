@@ -23,53 +23,16 @@ namespace SWMS.Influx.Module.BusinessObjects
         [NotMapped]
         public ObservableCollection<InfluxDatapoint> Datapoints { get; set; } = new ObservableCollection<InfluxDatapoint>();
 
-#nullable enable
-        //[NotMapped]
-        //[VisibleInListView(false)]
-        //[VisibleInDetailView(false)]
-        //[VisibleInLookupListView(false)]
-        //public InfluxDatapoint? LastDatapoint
-        //{
-        //    get
-        //    {
-        //        return InfluxDBService.GetLastDatapointForField(this);
-        //    }
-        //}
-#nullable disable
-
         public async Task<ObservableCollection<InfluxDatapoint>> GetDatapoints(
             FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null,
             AssetAdministrationShell? assetAdministrationShell = null
-            )
+        )
         {
-            var measurement = InfluxMeasurement.Name;
-            var filters = new Dictionary<string, List<string>>
-            {
-                { "_measurement", new List<string>(){ measurement } },
-                { "_field", new List<string>(){ Name } },
-            };
-            if(assetAdministrationShell != null)
-            {
-                assetAdministrationShell.InfluxIdentificationInstances.ToList().ForEach(instance =>
-                {
-                    instance.InfluxTagValues.ToList().ForEach(tagValue =>
-                    {
-                        if (tagValue.InfluxTagKey != null)
-                        {
-                            if (!filters.ContainsKey(tagValue.InfluxTagKey.Name))
-                            {
-                                filters[tagValue.InfluxTagKey.Name] = new List<string>();
-                            }
-                            filters[tagValue.InfluxTagKey.Name].Add(tagValue.Value);
-                        }
-                    });
-                });
-            }
-
+            var filter = InfluxDBService.GetFilterForField(this, assetAdministrationShell);
             var datapoints = await InfluxDBService.QueryInfluxDatapoints(
                 fluxRange: fluxRange,
-                filters: filters,
+                filters: filter,
                 aggregateWindow: aggregateWindow
             );
 
@@ -80,7 +43,6 @@ namespace SWMS.Influx.Module.BusinessObjects
             datapoints.ForEach(Datapoints.Add);
 
             return Datapoints;
-
         }
     }
 }

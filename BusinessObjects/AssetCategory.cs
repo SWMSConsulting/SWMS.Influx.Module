@@ -44,7 +44,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         {
             get
             {
-                return InfluxDBService.IsValidFluxDuration(AggregateWindow);
+                return FluxService.IsValidFluxDuration(AggregateWindow);
             }
         }
     }
