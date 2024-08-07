@@ -1,39 +1,26 @@
-using DevExpress.Data.Filtering;
-using DevExpress.ExpressApp;
-using DevExpress.ExpressApp.DC;
-using DevExpress.ExpressApp.Model;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
-using DevExpress.Persistent.Validation;
 using FastMember;
 using SWMS.Influx.Module.Services;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
-    // Register this entity in your DbContext (usually in the BusinessObjects folder of your project) with the "public DbSet<InfluxTagValue> InfluxTagValues { get; set; }" syntax.
     [DefaultClassOptions]
     [NavigationItem("Influx")]
     public class InfluxTagValue : BaseObject, INotifyPropertyChanged
     {
-        public InfluxTagValue()
-        {
-
-        }
+        public InfluxTagValue() { }
         public InfluxTagValue(InfluxTagKeyPropertyBinding binding, object assetAdministrationShell)
         {
             var wrapped = ObjectAccessor.Create(assetAdministrationShell);
             string propName = binding.ImplementingClassPropertyName;
             var propValue = wrapped[propName];
             InfluxTagKey = binding.InfluxTagKey;
-            Value = propValue.ToString();
+            Value = propValue?.ToString();
         }
 
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)

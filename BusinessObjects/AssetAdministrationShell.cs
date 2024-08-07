@@ -1,36 +1,35 @@
-using Aqua.EnumerableExtensions;
-using DevExpress.CodeParser;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using DevExpress.Persistent.Validation;
 using SWMS.Influx.Module.Models;
 using SWMS.Influx.Module.Services;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Runtime.CompilerServices;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
     [DefaultClassOptions]
     //[ImageName("BO_Contact")]
     [NavigationItem("Influx")]
-    public abstract class AssetAdministrationShell : BaseObject, INotifyPropertyChanged
+    public abstract class AssetAdministrationShell : BaseObject
     {
-        private AssetCategory _AssetCategory;
+        private AssetCategory _assetCategory;
         [RuleRequiredField(DefaultContexts.Save)]
         public virtual AssetCategory AssetCategory { 
-        get => _AssetCategory;
-            set {
-                _AssetCategory = value;
+            get => _assetCategory;
+            set
+            {
+                _assetCategory = value;
                 CreateInfluxIdentificationInstances();
-                OnPropertyChanged();
             }
         }
     
 
         [ExpandObjectMembers(ExpandObjectMembers.InListView)]
         public virtual IList<InfluxIdentificationInstance> InfluxIdentificationInstances { get; set; } = new ObservableCollection<InfluxIdentificationInstance>();
+
+        [NotMapped]
+        public IList<InfluxMeasurement> InfluxMeasurements => AssetCategory?.InfluxMeasurements;
 
         [NotMapped]
         public IList<InfluxField> InfluxFields => AssetCategory?.RelevantInfluxFields;
@@ -40,7 +39,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public InfluxIdentificationInstance? GetInfluxIdentificationInstanceForMeasurement(string measurement)
         {
-            return InfluxIdentificationInstances.Where(i => i.InfluxMeasurement.Name == measurement).FirstOrDefault();
+            return InfluxIdentificationInstances.Where(i => i.InfluxMeasurement?.Name == measurement).FirstOrDefault();
         }
 
         public double? GetLastDatapoint(string measurement, string field)
@@ -73,6 +72,12 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
         }
 
+
+        [Action(
+            Caption = "Update Identification",
+            AutoCommit = true,
+            ImageName = "Action_Refresh"
+        )]
         public void CreateInfluxIdentificationInstances()
         {
             InfluxIdentificationInstances.ToList().ForEach(ObjectSpace.Delete);
@@ -100,29 +105,15 @@ namespace SWMS.Influx.Module.BusinessObjects
                 }
                 InfluxIdentificationInstances.Add(instance);
             }
+
             ObjectSpace.CommitChanges();
             ObjectSpace.Refresh();
-
-            OnPropertyChanged(nameof(InfluxIdentificationInstances));
         }
+
         public override void OnLoaded()
         {
             base.OnLoaded();
-
-            InfluxFields.ForEach(f =>
-            {
-                f.Datapoints.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(InfluxDatapoints));
-            });
         }
-        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-
-        #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)
-        public event PropertyChangedEventHandler PropertyChanged;
-        #endregion
 
     }
 }

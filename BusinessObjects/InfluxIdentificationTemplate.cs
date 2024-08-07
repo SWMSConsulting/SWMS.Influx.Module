@@ -1,40 +1,30 @@
-using DevExpress.Data.Filtering;
-using DevExpress.ExpressApp;
 using DevExpress.ExpressApp.DC;
-using DevExpress.ExpressApp.Model;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using DevExpress.Persistent.Validation;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
-    // Register this entity in your DbContext (usually in the BusinessObjects folder of your project) with the "public DbSet<InfluxIdentification> InfluxIdentifications { get; set; }" syntax.
     [DefaultClassOptions]
     [NavigationItem("Influx")]
+    [DefaultProperty(nameof(Name))]
     public class InfluxIdentificationTemplate : BaseObject
     {
-        public InfluxIdentificationTemplate()
-        {
-
-        }
-
-        public string Name => ToString();
-
+        [RuleRequiredField(DefaultContexts.Save)]
         public virtual AssetCategory AssetCategory { get; set; }
 
-        [ExpandObjectMembers(ExpandObjectMembers.InListView)]
+        [RuleRequiredField(DefaultContexts.Save)]
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
 
         [DataSourceProperty("InfluxMeasurement.InfluxTagKeys", DataSourcePropertyIsNullMode.SelectAll)]
+        [Aggregated]
         public virtual IList<InfluxTagKeyPropertyBinding> InfluxTagKeyPropertyBindings { get; set; } = new ObservableCollection<InfluxTagKeyPropertyBinding>();
 
+        [NotMapped]
+        public string Name => ToString();
         public override string ToString()
         {
             if(InfluxMeasurement == null || AssetCategory == null)

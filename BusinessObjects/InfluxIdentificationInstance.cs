@@ -9,19 +9,14 @@ namespace SWMS.Influx.Module.BusinessObjects
     [DefaultClassOptions]
     [NavigationItem("Influx")]
     public class InfluxIdentificationInstance : BaseObject
-    {        
-        public InfluxIdentificationInstance()
-        {
-
-        }
-
+    {
         public virtual AssetAdministrationShell AssetAdministrationShell { get; set; }
         public virtual InfluxIdentificationTemplate InfluxIdentificationTemplate { get; set; }
 
         public virtual IList<InfluxTagValue> InfluxTagValues { get; set; } = new ObservableCollection<InfluxTagValue>();
 
         [NotMapped]
-        public InfluxMeasurement InfluxMeasurement => InfluxIdentificationTemplate.InfluxMeasurement;
+        public InfluxMeasurement InfluxMeasurement => InfluxIdentificationTemplate?.InfluxMeasurement;
 
         [NotMapped]
         public string TagSetString => InfluxDBService.GetTagSetString(InfluxTagValues);

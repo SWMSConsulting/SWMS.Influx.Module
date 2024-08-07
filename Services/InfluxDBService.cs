@@ -65,6 +65,7 @@ public class InfluxDBService
         using (var scope = _serviceScopeFactory.CreateScope())
         {
             var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+            
             var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
 
             var allMeasurements = objectSpace.GetObjects<InfluxMeasurement>();
@@ -211,7 +212,11 @@ public class InfluxDBService
                         {
                             return;
                         }
-                        var tagInfluxValue = new InfluxTagValue();
+                        var tagInfluxValue = new InfluxTagValue()
+                        {
+                            InfluxTagKey = influxTagKey,
+                            Value = tag.Value.ToString()
+                        };
                         tagInfluxValue.InfluxTagKey = influxTagKey;
                         tagInfluxValue.Value = tag.Value.ToString();
                         tagList.Add(tagInfluxValue);

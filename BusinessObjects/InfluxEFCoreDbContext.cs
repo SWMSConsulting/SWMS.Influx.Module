@@ -71,5 +71,17 @@ public class InfluxEFCoreDbContext : DbContext {
             .Entity<AssetCategory>()
             .Property(d => d.AggregateFunction)
             .HasConversion<string>();
+
+        modelBuilder
+            .Entity<AssetCategory>()
+            .HasMany(x => x.InfluxIdentificationTemplates)
+            .WithOne(x => x.AssetCategory)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder
+            .Entity<InfluxIdentificationTemplate>()
+            .HasMany(x => x.InfluxTagKeyPropertyBindings)
+            .WithOne(x => x.InfluxIdentificationTemplate)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
