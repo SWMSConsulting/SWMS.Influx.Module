@@ -20,29 +20,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public async Task GetFields()
         {
-            string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
-            var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
-            var measurement = Name;
-
-            var results = await InfluxDBService.QueryAsync(async query =>
-            {
-                // List fields for measurement in bucket: https://docs.influxdata.com/influxdb/cloud/query-data/flux/explore-schema/
-                // By default, this function returns results from the last 30 days.
-                var flux = $"import \"influxdata/influxdb/schema\"\n" +
-                            $"schema.measurementFieldKeys(" +
-                            $"bucket: \"{bucket}\"," +
-                            $"measurement: \"{measurement}\"," +
-                            $")";
-
-                var tables = await query.QueryAsync(flux, organization);
-                
-                return tables.SelectMany(table =>
-                    table.Records.Select(record =>
-                        new InfluxField
-                        {
-                            Name = record.GetValueByKey("_value").ToString()
-                        }));
-            });
+            var results = await InfluxDBService.GetInfluxFieldsForMeasurement(Name);
 
             foreach(var result in results)
             {
@@ -57,36 +35,13 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
 
             ObjectSpace.CommitChanges();
-
         }
 
         public async Task GetTagKeys()
         {
-            string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
-            var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
-            var measurement = Name;
+            var results = await InfluxDBService.GetInfluxTagKeysForMeasurement(Name);
 
-            var results = await InfluxDBService.QueryAsync(async query =>
-            {
-                // List tags for measurement in bucket: https://docs.influxdata.com/influxdb/cloud/query-data/flux/explore-schema/
-                // By default, this function returns results from the last 30 days.
-                var flux = $"import \"influxdata/influxdb/schema\"\n" +
-                            $"schema.measurementTagKeys(" +
-                            $"bucket: \"{bucket}\"," +
-                            $"measurement: \"{measurement}\"," +
-                            $")";
-
-                var tables = await query.QueryAsync(flux, organization);
-                
-                return tables.SelectMany(table =>
-                    table.Records.Select(record =>
-                        new InfluxTagKey
-                        {
-                            Name = record.GetValueByKey("_value").ToString()
-                        }));
-            });
-
-            foreach(var result in results)
+            foreach (var result in results)
             {
                 if (InfluxTagKeys.Any(f => f.Name == result.Name) || result.Name.StartsWith("_"))
                 {
@@ -98,9 +53,6 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
 
             ObjectSpace.CommitChanges();
-
         }
-
-
     }
 }
