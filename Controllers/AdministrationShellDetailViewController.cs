@@ -12,6 +12,7 @@ namespace SWMS.Influx.Module.Controllers
             TargetViewType = ViewType.DetailView;
             TargetObjectType = typeof(AssetAdministrationShell);
 
+            /*
             SimpleAction mySimpleAction = new SimpleAction(this, "GetMeasurementsAction", PredefinedCategory.View)
             {
                 Caption = "Refresh Measurements",
@@ -19,6 +20,7 @@ namespace SWMS.Influx.Module.Controllers
                 ImageName = "Action_Refresh"
             };
             mySimpleAction.Execute += GetMeasurementsAction;
+            */
         }
         private async void GetMeasurementsAction(object sender, SimpleActionExecuteEventArgs e)
         {

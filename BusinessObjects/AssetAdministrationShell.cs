@@ -1,7 +1,7 @@
+using DevExpress.ExpressApp.DC;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using DevExpress.Persistent.Validation;
-using SWMS.Influx.Module.Models;
 using SWMS.Influx.Module.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -13,6 +13,8 @@ namespace SWMS.Influx.Module.BusinessObjects
     [NavigationItem("Influx")]
     public abstract class AssetAdministrationShell : BaseObject
     {
+        public abstract string Caption { get; }
+
         private AssetCategory _assetCategory;
         [RuleRequiredField(DefaultContexts.Save)]
         public virtual AssetCategory AssetCategory { 
@@ -20,22 +22,17 @@ namespace SWMS.Influx.Module.BusinessObjects
             set
             {
                 _assetCategory = value;
-                CreateInfluxIdentificationInstances();
+                CreateInfluxIdentificationInstances(false);
             }
         }
     
 
         [ExpandObjectMembers(ExpandObjectMembers.InListView)]
+        [Aggregated]
         public virtual IList<InfluxIdentificationInstance> InfluxIdentificationInstances { get; set; } = new ObservableCollection<InfluxIdentificationInstance>();
 
         [NotMapped]
         public IList<InfluxMeasurement> InfluxMeasurements => AssetCategory?.InfluxMeasurements;
-
-        [NotMapped]
-        public IList<InfluxField> InfluxFields => AssetCategory?.RelevantInfluxFields;
-
-        [NotMapped]
-        public IList<InfluxDatapoint> InfluxDatapoints => InfluxFields.SelectMany(f => f.Datapoints).ToList();
 
         public InfluxIdentificationInstance? GetInfluxIdentificationInstanceForMeasurement(string measurement)
         {
@@ -57,30 +54,16 @@ namespace SWMS.Influx.Module.BusinessObjects
 
 
         [Action(
-            Caption = "Refresh Datapoints",
-            AutoCommit = true,
-            ImageName = "Action_Refresh"
-        )]
-        public async void RefreshDatapoints()
-        {
-            var fluxRange = new FluxRange(AssetCategory.RangeStart, AssetCategory.RangeEnd);
-            var aggregateWindow = new FluxAggregateWindow(AssetCategory.AggregateWindow, AssetCategory.AggregateFunction);
-
-            foreach (var field in InfluxFields)
-            {
-                await field.GetDatapoints(fluxRange, aggregateWindow, this);
-            }
-        }
-
-
-        [Action(
             Caption = "Update Identification",
             AutoCommit = true,
             ImageName = "Action_Refresh"
         )]
-        public void CreateInfluxIdentificationInstances()
+        public void CreateInfluxIdentificationInstances(bool commitChanges = true)
         {
-            InfluxIdentificationInstances.ToList().ForEach(ObjectSpace.Delete);
+            while (InfluxIdentificationInstances.Count > 0)
+            {
+                InfluxIdentificationInstances.RemoveAt(0);
+            }
 
             if (AssetCategory == null)
             {
@@ -104,16 +87,13 @@ namespace SWMS.Influx.Module.BusinessObjects
                     instance.InfluxTagValues.Add(objectSpaceInfluxTagValue);
                 }
                 InfluxIdentificationInstances.Add(instance);
+
+                if(commitChanges)
+                {
+                    ObjectSpace.CommitChanges();
+                    ObjectSpace.Refresh();
+                }
             }
-
-            ObjectSpace.CommitChanges();
-            ObjectSpace.Refresh();
         }
-
-        public override void OnLoaded()
-        {
-            base.OnLoaded();
-        }
-
     }
 }

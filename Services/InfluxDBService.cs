@@ -148,10 +148,10 @@ public class InfluxDBService
 
     private static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
     {
-        var fluxRange = new FluxRange(fluxDuration, "now()");
+        var fluxRange = new FluxRange(fluxDuration, FluxRange.Now);
         var datapoints = await QueryInfluxDatapoints(
             fluxRange: fluxRange,
-            pipe: "|> last()"
+            pipe: FluxQueryPipe.Last
             );
         return datapoints;
     }
@@ -161,13 +161,23 @@ public class InfluxDBService
     public static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
         FluxRange fluxRange,
         FluxAggregateWindow? aggregateWindow = null,
-        Dictionary<string, List<string>>? filters = null,
-        string? pipe = ""
+        IEnumerable<InfluxField>? influxFields = null,
+        IEnumerable<InfluxIdentificationInstance>? influxIdentificationInstances = null,
+        FluxQueryPipe? pipe = null
         )
     {
-        var flux = FluxService.GetFluxQueryForDatapoints(_bucket, fluxRange, aggregateWindow, filters, pipe);
-        //Console.WriteLine(flux);
-        var tables = await _queryApi.QueryAsync(flux, Organization);
+        string query = new FluxQueryBuilder()
+            .AddBucket(_bucket)
+            .AddRange(fluxRange)
+            .AddAggregation(aggregateWindow)
+            .AddMeasurementFilter(influxFields?.Select(f => f.InfluxMeasurement))
+            .AddFieldFilter(influxFields)
+            .AddTagFilter(influxIdentificationInstances)
+            .AddPipe(pipe)
+            .Build();
+        Console.WriteLine(query);
+
+        var tables = await _queryApi.QueryAsync(query, Organization);
         return FluxTablesToInfluxDatapoints(tables);
     }
 
@@ -270,42 +280,9 @@ public class InfluxDBService
         return String.Join(",", orderedInfluxTagValues.Select(x => x.ToString()));
     }
 
-    public static string GetTagSetString(FluxRecord record)
-    {
-        var recordTags = record.Values.Where(x => !x.Key.StartsWith("_") && x.Key != "result" && x.Key != "table").OrderBy(x => x.Key);
-        var keyValuePairStrings = recordTags.Select(x => KeyValuePairToString(x.Key, x.Value.ToString()));
-        return String.Join(",", keyValuePairStrings);
-    }
-
     public static string KeyValuePairToString(string key, string value)
     {
         return $"{key}={value}";
-    }
-
-    public static Dictionary<string, List<string>> GetFilterForField(
-        InfluxField field,
-        AssetAdministrationShell? assetAdministrationShell = null
-    )
-    {
-        var measurement = field.InfluxMeasurement.Name;
-        var filters = new Dictionary<string, List<string>>();
-            if (assetAdministrationShell != null)
-            {
-                var identification = assetAdministrationShell.GetInfluxIdentificationInstanceForMeasurement(measurement);
-                filters = identification?.Filter ?? new Dictionary<string, List<string>>();
-            }
-        filters.Add("_measurement", new List<string>() { measurement });
-        filters.Add("_field", new List<string>() { field.Name });
-
-        return filters;
-    }
-
-    public static Dictionary<string, List<string>> GetFilterForTagValues(IList<InfluxTagValue> influxTagValues)
-    {
-        return influxTagValues
-            .GroupBy(x => x.InfluxTagKey.Name)
-            .ToDictionary(x => x.Key, x => x.Select(y => y.Value)
-            .ToList());
     }
     #endregion
 

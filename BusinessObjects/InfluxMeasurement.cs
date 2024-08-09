@@ -3,6 +3,7 @@ using DevExpress.Persistent.BaseImpl.EF;
 using SWMS.Influx.Module.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
@@ -17,6 +18,11 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual IList<InfluxTagKey> InfluxTagKeys { get; set; } = new ObservableCollection<InfluxTagKey>();
         public virtual IList<InfluxIdentificationTemplate> InfluxIdentificationTemplates { get; set; } = new ObservableCollection<InfluxIdentificationTemplate>();
 
+        [NotMapped]
+        public IEnumerable<InfluxIdentificationInstance> InfluxIdentificationInstances => InfluxIdentificationTemplates.SelectMany(x => x.InfluxIdentificationInstances);
+
+        [NotMapped]
+        public IEnumerable<AssetAdministrationShell> AssetAdministrationShells => InfluxIdentificationInstances.Select(x => x.AssetAdministrationShell);
 
         public async Task GetFields()
         {

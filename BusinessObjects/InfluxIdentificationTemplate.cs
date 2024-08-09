@@ -23,6 +23,9 @@ namespace SWMS.Influx.Module.BusinessObjects
         [Aggregated]
         public virtual IList<InfluxTagKeyPropertyBinding> InfluxTagKeyPropertyBindings { get; set; } = new ObservableCollection<InfluxTagKeyPropertyBinding>();
 
+        [Aggregated]
+        public virtual IList<InfluxIdentificationInstance> InfluxIdentificationInstances { get; set; } = new ObservableCollection<InfluxIdentificationInstance>();
+
         [NotMapped]
         public string Name => ToString();
         public override string ToString()

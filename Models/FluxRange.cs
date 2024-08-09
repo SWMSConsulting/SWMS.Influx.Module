@@ -10,6 +10,7 @@ namespace SWMS.Influx.Module.Models
     // Documenation: https://docs.influxdata.com/flux/v0/stdlib/universe/range/
     public class FluxRange
     {
+        public static string Now = "now()";
         public string Start {  get; set; }
         public string Stop {  get; set; }
 

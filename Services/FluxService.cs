@@ -72,6 +72,8 @@ public static class FluxService
             fluxFilterString +
             aggregateWindowString +
             pipe;
+
+        Console.WriteLine(query);
         return query;
     }
 

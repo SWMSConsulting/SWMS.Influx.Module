@@ -26,14 +26,14 @@ namespace SWMS.Influx.Module.BusinessObjects
         public async Task<ObservableCollection<InfluxDatapoint>> GetDatapoints(
             FluxRange fluxRange,
             FluxAggregateWindow? aggregateWindow = null,
-            AssetAdministrationShell? assetAdministrationShell = null
+            IEnumerable<InfluxIdentificationInstance>? influxIdentificationInstances = null
         )
         {
-            var filter = InfluxDBService.GetFilterForField(this, assetAdministrationShell);
             var datapoints = await InfluxDBService.QueryInfluxDatapoints(
                 fluxRange: fluxRange,
-                filters: filter,
-                aggregateWindow: aggregateWindow
+                aggregateWindow: aggregateWindow,
+                influxFields: new List<InfluxField> { this },
+                influxIdentificationInstances: influxIdentificationInstances
             );
 
             while (Datapoints.Count > 0)

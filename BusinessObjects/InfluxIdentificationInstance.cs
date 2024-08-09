@@ -23,8 +23,5 @@ namespace SWMS.Influx.Module.BusinessObjects
         
         [NotMapped]
         public List<KeyValuePair<string, object>> TagKeyValuePairs => InfluxTagValues.Select(x => x.KeyValuePair).ToList();
-
-        [NotMapped]
-        public Dictionary<string, List<string>> Filter => InfluxDBService.GetFilterForTagValues(InfluxTagValues);
     }
 }
