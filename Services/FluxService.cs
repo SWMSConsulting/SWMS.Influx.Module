@@ -36,47 +36,6 @@ public static class FluxService
                 $"measurement: \"{measurement}\"," +
                 $")";
     }
-
-    public static string GetFluxQueryForDatapoints(
-        string bucket,
-        FluxRange fluxRange,
-        FluxAggregateWindow? aggregateWindow = null,
-        Dictionary<string, List<string>>? filters = null,
-        string? pipe = ""
-    )
-    {
-        filters ??= new Dictionary<string, List<string>>();
-        List<string> tagFluxFilters = new List<string>();
-        foreach (var kvp in filters)
-        {
-            var arrowFunctionParts = new List<string>();
-            foreach (var value in kvp.Value)
-            {
-                var arrowFunctionPart = $"r[\"{kvp.Key}\"] == \"{value}\"";
-                arrowFunctionParts.Add(arrowFunctionPart);
-            }
-            var arrowFunction = String.Join(" or ", arrowFunctionParts);
-            var tagFluxFilter = $"|> filter(fn: (r) => {arrowFunction})";
-            tagFluxFilters.Add(tagFluxFilter);
-        }
-        var fluxFilterString = String.Join("\n", tagFluxFilters);
-
-        var aggregateWindowString = "";
-        if (aggregateWindow != null)
-        {
-            aggregateWindowString = $"|> aggregateWindow(every: {aggregateWindow.Every}, fn: {aggregateWindow.Fn.ToString().ToLower()}, createEmpty: false)";
-        }
-
-        string query = $"from(bucket:\"{bucket}\") " +
-            $"|> range(start: {fluxRange.Start}, stop: {fluxRange.Stop}) " +
-            fluxFilterString +
-            aggregateWindowString +
-            pipe;
-
-        Console.WriteLine(query);
-        return query;
-    }
-
     #region Duration Helper Functions
 
     private static string FluxDurationRegexPattern = @"^(\d+w)?(\d+d)?(\d+h)?(\d+m)?(\d+s)?(\d+ms)?$";
