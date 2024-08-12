@@ -185,8 +185,7 @@ public class InfluxDBService
     {
         // TODO: optimize by keeping local List / HashSet of InfluxFields instead of loading from ObjectSpace
 
-        using (var scope = _serviceScopeFactory.CreateScope())
-        {
+        using var scope = _serviceScopeFactory.CreateScope();
             var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
             var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
             var influxFields = objectSpace.GetObjects<InfluxField>();
@@ -244,7 +243,6 @@ public class InfluxDBService
             });
             return datapoints;
         }
-    }
     public static bool FluxRecordIsInfluxField(InfluxField field, FluxRecord record)
     {
         if (field == null || record == null)
