@@ -190,6 +190,7 @@ public class InfluxDBService
             var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
             var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
             var influxFields = objectSpace.GetObjects<InfluxField>();
+            var influxTagKeys = objectSpace.GetObjects<InfluxTagKey>();
             
             List<InfluxDatapoint> datapoints = new();
             tables.ForEach(table =>
@@ -216,7 +217,6 @@ public class InfluxDBService
 
                     foreach (var tag in recordTags)
                     {
-                        var influxTagKeys = objectSpace.GetObjects<InfluxTagKey>();
                         var influxTagKey = influxTagKeys.FirstOrDefault(x => x.Name == tag.Key && x.InfluxMeasurement.Name == record.GetMeasurement());
                         if (influxTagKey == null)
                         {
