@@ -58,6 +58,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             AutoCommit = true,
             ImageName = "Action_Refresh"
         )]
+        public void CreateInfluxIdentificationInstances() => CreateInfluxIdentificationInstances(true);
         public void CreateInfluxIdentificationInstances(bool commitChanges = true)
         {
             while (InfluxIdentificationInstances.Count > 0)
