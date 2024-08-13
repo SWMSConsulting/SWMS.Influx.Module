@@ -6,7 +6,6 @@ using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Text.RegularExpressions;
 
 namespace SWMS.Influx.Module.Services;
 
@@ -18,7 +17,13 @@ public class InfluxDBService
     
     public readonly static string Organization = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_ORG");
     
-    private readonly static InfluxDBClient _client = new InfluxDBClient(_url, _token);
+    private readonly static InfluxDBClientOptions _clientOptions = new InfluxDBClientOptions.Builder()
+        .Url(_url)
+        .AuthenticateToken(_token)
+        .TimeOut(TimeSpan.FromMinutes(5))
+        .Build();
+
+    private readonly static InfluxDBClient _client = new InfluxDBClient(_clientOptions);
     private readonly static WriteApi _writeApi = _client.GetWriteApi();
     private readonly static QueryApi _queryApi = _client.GetQueryApi();
     private static Dictionary<string, InfluxDatapoint> LastDatapoints { get; set; } = new Dictionary<string, InfluxDatapoint>();
@@ -177,8 +182,16 @@ public class InfluxDBService
             .Build();
         Console.WriteLine(query);
 
-        var tables = await _queryApi.QueryAsync(query, Organization);
-        return FluxTablesToInfluxDatapoints(tables);
+        try
+        {
+            var tables = await _queryApi.QueryAsync(query, Organization);
+            return FluxTablesToInfluxDatapoints(tables);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.ToString());
+            return new List<InfluxDatapoint>();
+        }
     }
 
     public static List<InfluxDatapoint> FluxTablesToInfluxDatapoints(List<FluxTable> tables)
@@ -261,7 +274,6 @@ public class InfluxDBService
         return recordIsCurrentField;
     }
     #endregion
-
 
     #region Helper Functions
     private static string GetFieldIdentifier(InfluxField field, InfluxIdentificationInstance identification)

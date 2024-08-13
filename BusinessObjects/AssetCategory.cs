@@ -17,10 +17,6 @@ namespace SWMS.Influx.Module.BusinessObjects
     public class AssetCategory : BaseObject
     {     
         public virtual string Name { get; set; }
-        public virtual string RangeStart { get; set; }
-        public virtual string RangeEnd { get; set; }
-        public virtual string AggregateWindow { get; set; }
-        public virtual FluxAggregateFunction AggregateFunction { get; set; }
 
         [Aggregated]
         public virtual IList<InfluxIdentificationTemplate> InfluxIdentificationTemplates { get; set; } = new ObservableCollection<InfluxIdentificationTemplate>();
@@ -35,17 +31,5 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         [NotMapped]
         public IList<InfluxField> InfluxFields => InfluxMeasurements.SelectMany(m => m.InfluxFields).Distinct().ToList();
-
-
-
-        [Browsable(false)]
-        [RuleFromBoolProperty("ValidFluxDuration", DefaultContexts.Save, "Invalid flux duration!", UsedProperties = "AggregateWindow")]
-        public bool AggregateWindowIsValid
-        {
-            get
-            {
-                return FluxService.IsValidFluxDuration(AggregateWindow);
-            }
-        }
     }
 }

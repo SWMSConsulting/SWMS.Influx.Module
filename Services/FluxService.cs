@@ -119,4 +119,46 @@ public static class FluxService
         return result;
     }
     #endregion
+
+    public static DateTime? FluxRangeToDateTime(string? rangeQuantifier)
+    {
+        if (rangeQuantifier == null)
+        {
+            return null;
+        }
+
+        if (rangeQuantifier == "now()")
+        {
+            return DateTime.Now;
+        }
+
+        if (DateTime.TryParse(rangeQuantifier, out var date))
+        {
+            return date;
+        }
+
+        if (rangeQuantifier.Length > 1)
+        {
+            var durationUnit = rangeQuantifier.Last();
+            var validDuration = int.TryParse(rangeQuantifier.Substring(0, rangeQuantifier.Length - 1), out var duration);
+
+
+            DateTime dateTime = DateTime.Now;
+            switch (durationUnit)
+            {
+                case 'y':
+                    return dateTime.AddYears(duration);
+                case 'M':
+                    return dateTime.AddMonths(duration);
+                case 'd':
+                    return dateTime.AddDays(duration);
+                case 'h':
+                    return dateTime.AddHours(duration);
+                case 'm':
+                    return dateTime.AddMinutes(duration);
+            }
+        }
+
+        return null;
+    }
 }

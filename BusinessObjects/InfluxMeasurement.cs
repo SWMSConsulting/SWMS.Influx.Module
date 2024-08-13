@@ -17,6 +17,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual IList<InfluxField> InfluxFields { get; set; } = new ObservableCollection<InfluxField>();
         public virtual IList<InfluxTagKey> InfluxTagKeys { get; set; } = new ObservableCollection<InfluxTagKey>();
         public virtual IList<InfluxIdentificationTemplate> InfluxIdentificationTemplates { get; set; } = new ObservableCollection<InfluxIdentificationTemplate>();
+        public virtual IList<PredefinedQuerySettings> PredefinedSettings { get; set; } = new ObservableCollection<PredefinedQuerySettings>();
 
         [NotMapped]
         public IEnumerable<InfluxIdentificationInstance> InfluxIdentificationInstances => InfluxIdentificationTemplates.SelectMany(x => x.InfluxIdentificationInstances);

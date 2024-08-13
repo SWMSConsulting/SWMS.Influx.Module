@@ -39,18 +39,20 @@ public class InfluxEFCoreDbContext : DbContext {
         : base(options) {
     }
 
-	//public DbSet<ModuleInfo> ModulesInfo { get; set; }
-	public DbSet<AssetAdministrationShell> AssetAdministrationShell { get; set; }
+	public DbSet<PredefinedQuerySettings> PredefinedSettings { get; set; }
+	//public DbSet<AssetAdministrationShell> AssetAdministrationShell { get; set; }
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder) {
         base.OnModelCreating(modelBuilder);
         modelBuilder.HasChangeTrackingStrategy(ChangeTrackingStrategy.ChangingAndChangedNotificationsWithOriginalValues);
         modelBuilder.UsePropertyAccessMode(PropertyAccessMode.PreferFieldDuringConstruction);
 
+        /*
         modelBuilder.Entity<AssetAdministrationShell>()
             .HasMany(r => r.InfluxIdentificationInstances)
             .WithOne(x => x.AssetAdministrationShell)
             .OnDelete(DeleteBehavior.Cascade);
+        */
 
         modelBuilder.Entity<InfluxMeasurement>()
             .HasMany(r => r.InfluxFields)
@@ -69,11 +71,6 @@ public class InfluxEFCoreDbContext : DbContext {
 
         modelBuilder
             .Entity<AssetCategory>()
-            .Property(d => d.AggregateFunction)
-            .HasConversion<string>();
-
-        modelBuilder
-            .Entity<AssetCategory>()
             .HasMany(x => x.InfluxIdentificationTemplates)
             .WithOne(x => x.AssetCategory)
             .OnDelete(DeleteBehavior.Cascade);
@@ -83,5 +80,10 @@ public class InfluxEFCoreDbContext : DbContext {
             .HasMany(x => x.InfluxTagKeyPropertyBindings)
             .WithOne(x => x.InfluxIdentificationTemplate)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder
+            .Entity<PredefinedQuerySettings>()
+            .Property(d => d.AggregateFunction)
+            .HasConversion<string>();
     }
 }

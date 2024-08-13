@@ -1,3 +1,4 @@
+using Aqua.EnumerableExtensions;
 using DevExpress.ExpressApp.DC;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
@@ -8,7 +9,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
-    [DefaultClassOptions]
+    //[DefaultClassOptions]
     //[ImageName("BO_Contact")]
     [NavigationItem("Influx")]
     public abstract class AssetAdministrationShell : BaseObject
@@ -61,10 +62,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         public void CreateInfluxIdentificationInstances() => CreateInfluxIdentificationInstances(true);
         public void CreateInfluxIdentificationInstances(bool commitChanges = true)
         {
-            while (InfluxIdentificationInstances.Count > 0)
-            {
-                InfluxIdentificationInstances.RemoveAt(0);
-            }
+            InfluxIdentificationInstances.ForEach(ObjectSpace.Delete);
 
             if (AssetCategory == null)
             {

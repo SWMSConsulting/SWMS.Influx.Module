@@ -1,11 +1,4 @@
-﻿using DevExpress.CodeParser;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SWMS.Influx.Module.Models
+﻿namespace SWMS.Influx.Module.Models
 {
     // Documenation: https://docs.influxdata.com/flux/v0/stdlib/universe/range/
     public class FluxRange
