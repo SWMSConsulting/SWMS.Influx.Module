@@ -62,7 +62,8 @@ namespace SWMS.Influx.Module.BusinessObjects
         public void CreateInfluxIdentificationInstances() => CreateInfluxIdentificationInstances(true);
         public void CreateInfluxIdentificationInstances(bool commitChanges = true)
         {
-            InfluxIdentificationInstances.ForEach(ObjectSpace.Delete);
+            var updatedInstances = new ObservableCollection<InfluxIdentificationInstance>();
+            InfluxIdentificationInstances = updatedInstances;
 
             if (AssetCategory == null)
             {

@@ -22,27 +22,5 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         [NotMapped]
         public ObservableCollection<InfluxDatapoint> Datapoints { get; set; } = new ObservableCollection<InfluxDatapoint>();
-
-        public async Task<ObservableCollection<InfluxDatapoint>> GetDatapoints(
-            FluxRange fluxRange,
-            FluxAggregateWindow? aggregateWindow = null,
-            IEnumerable<InfluxIdentificationInstance>? influxIdentificationInstances = null
-        )
-        {
-            var datapoints = await InfluxDBService.QueryInfluxDatapoints(
-                fluxRange: fluxRange,
-                aggregateWindow: aggregateWindow,
-                influxFields: new List<InfluxField> { this },
-                influxIdentificationInstances: influxIdentificationInstances
-            );
-
-            while (Datapoints.Count > 0)
-            {
-                Datapoints.RemoveAt(0);
-            }
-            datapoints.ForEach(Datapoints.Add);
-
-            return Datapoints;
-        }
     }
 }

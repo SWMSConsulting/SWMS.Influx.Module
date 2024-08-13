@@ -135,6 +135,14 @@ namespace SWMS.Influx.Module.Controllers
             influxDatapointListView.CurrentObject = new InfluxDatapointList();
             var influxDatapointList = (InfluxDatapointList)influxDatapointListView.CurrentObject;
 
+            var start = "-3h";
+            var stop = "now()";
+            var fluxRange = new FluxRange(start, stop);
+            var aggregateTime = "1m";
+            var aggregateFunction = FluxAggregateFunction.Mean;
+            var aggregateWindow = new FluxAggregateWindow(aggregateTime, aggregateFunction);
+            // TODO: include data loading from InfluxDB service
+            throw new NotImplementedException();
             foreach (object obj in influxFieldListView.SelectedObjects)
             {
                 InfluxField influxField = (InfluxField)obj;
@@ -144,15 +152,9 @@ namespace SWMS.Influx.Module.Controllers
                 //var fluxRange = new FluxRange(start, stop);
                 //var aggregateTime = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
                 //var aggregateFunction = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateFunction;
-                var start = "-3h";
-                var stop = "now()";
-                var fluxRange = new FluxRange(start, stop);
-                var aggregateTime = "1m";
-                var aggregateFunction = FluxAggregateFunction.Mean;
-                var aggregateWindow = new FluxAggregateWindow(aggregateTime, aggregateFunction);
 
-                await influxField.GetDatapoints(fluxRange, aggregateWindow);
-                datapoints.AddRange(influxField.Datapoints);
+                //await influxField.GetDatapoints(fluxRange, aggregateWindow);
+                //datapoints.AddRange(influxField.Datapoints);
             }
 
             influxDatapointList.Datapoints = new BindingList<InfluxDatapoint>(datapoints);
