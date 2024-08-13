@@ -231,11 +231,11 @@ public class InfluxDBService
     {
         // TODO: optimize by keeping local List / HashSet of InfluxFields instead of loading from ObjectSpace
 
-        using (var scope = _serviceScopeFactory.CreateScope())
-        {
+        using var scope = _serviceScopeFactory.CreateScope();
             var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
             var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
             var influxFields = objectSpace.GetObjects<InfluxField>();
+            var influxTagKeys = objectSpace.GetObjects<InfluxTagKey>();
             
             List<InfluxDatapoint> datapoints = new();
             tables.ForEach(table =>
@@ -262,7 +262,6 @@ public class InfluxDBService
 
                     foreach (var tag in recordTags)
                     {
-                        var influxTagKeys = objectSpace.GetObjects<InfluxTagKey>();
                         var influxTagKey = influxTagKeys.FirstOrDefault(x => x.Name == tag.Key && x.InfluxMeasurement.Name == record.GetMeasurement());
                         if (influxTagKey == null)
                         {
@@ -290,7 +289,6 @@ public class InfluxDBService
             });
             return datapoints;
         }
-    }
     public static bool FluxRecordIsInfluxField(InfluxField field, FluxRecord record)
     {
         if (field == null || record == null)
