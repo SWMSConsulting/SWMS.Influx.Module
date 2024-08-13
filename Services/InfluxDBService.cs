@@ -279,7 +279,7 @@ public class InfluxDBService
 
                     InfluxDatapoint datapoint = new InfluxDatapoint()
                     {
-                        Value = (double)record.GetValue(),
+                        Value = Convert.ToDouble(record.GetValue()),
                         Time = (DateTime)record.GetTimeInDateTime(),
                         InfluxField = currentField,
                         InfluxTagValues = tagList,
