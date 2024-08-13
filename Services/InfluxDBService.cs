@@ -151,24 +151,51 @@ public class InfluxDBService
         LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField, x.InfluxTagValues), x => x);
     }
 
+    private static CancellationTokenSource cancellationTokenSourceLastDp = new CancellationTokenSource();
+
     private static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
     {
+        cancellationTokenSourceLastDp.Cancel();
+        cancellationTokenSourceLastDp = new CancellationTokenSource();
+
         var fluxRange = new FluxRange(fluxDuration, FluxRange.Now);
-        var datapoints = await QueryInfluxDatapoints(
+        return await QueryInfluxDatapoints(
             fluxRange: fluxRange,
-            pipe: FluxQueryPipe.Last
-            );
-        return datapoints;
+            pipe: FluxQueryPipe.Last,
+            cancellationToken: cancellationTokenSourceLastDp.Token
+        );
     }
     #endregion
 
     #region Query Datapoints
+    private static CancellationTokenSource cancellationTokenSourceQueryDp = new CancellationTokenSource();
     public static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
         FluxRange fluxRange,
         FluxAggregateWindow? aggregateWindow = null,
         IEnumerable<InfluxField>? influxFields = null,
         IEnumerable<InfluxIdentificationInstance>? influxIdentificationInstances = null,
         FluxQueryPipe? pipe = null
+        )
+    {
+        cancellationTokenSourceQueryDp.Cancel();
+        cancellationTokenSourceQueryDp = new CancellationTokenSource();
+        return await QueryInfluxDatapoints(
+            fluxRange: fluxRange,
+            aggregateWindow: aggregateWindow,
+            influxFields: influxFields,
+            influxIdentificationInstances: influxIdentificationInstances,
+            pipe: pipe,
+            cancellationToken: cancellationTokenSourceQueryDp.Token
+        );
+    }
+
+    private static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
+        FluxRange fluxRange,
+        FluxAggregateWindow? aggregateWindow = null,
+        IEnumerable<InfluxField>? influxFields = null,
+        IEnumerable<InfluxIdentificationInstance>? influxIdentificationInstances = null,
+        FluxQueryPipe? pipe = null,
+        CancellationToken cancellationToken = default
         )
     {
         string query = new FluxQueryBuilder()
@@ -184,8 +211,14 @@ public class InfluxDBService
 
         try
         {
-            var tables = await _queryApi.QueryAsync(query, Organization);
+            var tables = await _queryApi.QueryAsync(query, Organization, cancellationToken);
             return FluxTablesToInfluxDatapoints(tables);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Console.WriteLine("Operation Canceled");
+            Console.WriteLine(ex.Message);
+            return new List<InfluxDatapoint>();
         }
         catch (Exception ex)
         {
