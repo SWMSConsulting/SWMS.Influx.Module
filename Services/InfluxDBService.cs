@@ -149,6 +149,7 @@ public class InfluxDBService
         var datapoints = await QueryLastDatapoints("-24h");
         // InfluxField.ID would also be possible as key, but is less readable
         LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField, x.InfluxTagValues), x => x);
+        Console.WriteLine($"Last Datapoints refreshed: {LastDatapoints.Count}");
     }
 
     private static CancellationTokenSource cancellationTokenSourceLastDp = new CancellationTokenSource();
