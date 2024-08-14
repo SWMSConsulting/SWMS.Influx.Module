@@ -62,8 +62,12 @@ namespace SWMS.Influx.Module.BusinessObjects
         public void CreateInfluxIdentificationInstances() => CreateInfluxIdentificationInstances(true);
         public void CreateInfluxIdentificationInstances(bool commitChanges = true)
         {
-            var updatedInstances = new ObservableCollection<InfluxIdentificationInstance>();
-            InfluxIdentificationInstances = updatedInstances;
+            while (InfluxIdentificationInstances.Count > 0)
+            {
+                var inst = InfluxIdentificationInstances[0];
+                InfluxIdentificationInstances.Remove(inst);
+                ObjectSpace.Delete(inst);
+            }
 
             if (AssetCategory == null)
             {
@@ -88,11 +92,11 @@ namespace SWMS.Influx.Module.BusinessObjects
                 }
                 InfluxIdentificationInstances.Add(instance);
 
-                if(commitChanges)
-                {
-                    ObjectSpace.CommitChanges();
-                    ObjectSpace.Refresh();
-                }
+            }
+            if(commitChanges)
+            {
+                ObjectSpace.CommitChanges();
+                ObjectSpace.Refresh();
             }
         }
     }
