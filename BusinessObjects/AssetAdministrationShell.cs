@@ -9,19 +9,15 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
-    //[DefaultClassOptions]
-    //[ImageName("BO_Contact")]
     [NavigationItem("Influx")]
+    [XafDefaultProperty(nameof(Caption))]
     public abstract class AssetAdministrationShell : BaseObject
     {
         public abstract string Caption { get; }
 
-        private AssetCategory _assetCategory;
         [RuleRequiredField]
         public virtual AssetCategory AssetCategory { get; set; }
     
-
-        [ExpandObjectMembers(ExpandObjectMembers.InListView)]
         [Aggregated]
         public virtual IList<InfluxIdentificationInstance> InfluxIdentificationInstances { get; set; } = new ObservableCollection<InfluxIdentificationInstance>();
 
