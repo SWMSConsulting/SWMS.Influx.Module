@@ -5,6 +5,7 @@ using DevExpress.Persistent.BaseImpl.EF;
 using DevExpress.Persistent.Validation;
 using SWMS.Influx.Module.Services;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SWMS.Influx.Module.BusinessObjects
@@ -13,6 +14,7 @@ namespace SWMS.Influx.Module.BusinessObjects
     [XafDefaultProperty(nameof(Caption))]
     public abstract class AssetAdministrationShell : BaseObject
     {
+        [Browsable(false)]
         public abstract string Caption { get; }
 
         [RuleRequiredField]
