@@ -17,15 +17,8 @@ namespace SWMS.Influx.Module.BusinessObjects
         public abstract string Caption { get; }
 
         private AssetCategory _assetCategory;
-        [RuleRequiredField(DefaultContexts.Save)]
-        public virtual AssetCategory AssetCategory { 
-            get => _assetCategory;
-            set
-            {
-                _assetCategory = value;
-                CreateInfluxIdentificationInstances(false);
-            }
-        }
+        [RuleRequiredField]
+        public virtual AssetCategory AssetCategory { get; set; }
     
 
         [ExpandObjectMembers(ExpandObjectMembers.InListView)]
@@ -53,51 +46,41 @@ namespace SWMS.Influx.Module.BusinessObjects
             return InfluxDBService.GetLastDatapointForField(influxField, identification);
         }
 
-
-        [Action(
-            Caption = "Update Identification",
-            AutoCommit = true,
-            ImageName = "Action_Refresh"
-        )]
-        public void CreateInfluxIdentificationInstances() => CreateInfluxIdentificationInstances(true);
-        public void CreateInfluxIdentificationInstances(bool commitChanges = true)
+        public void UpdateIdentificationInstances()
         {
-            while (InfluxIdentificationInstances.Count > 0)
+            AssetCategory?.InfluxIdentificationTemplates.ForEach(template =>
             {
-                var inst = InfluxIdentificationInstances[0];
-                InfluxIdentificationInstances.Remove(inst);
-                ObjectSpace.Delete(inst);
-            }
-
-            if (AssetCategory == null)
-            {
-                return;
-            }
-
-            var influxIdentificationTemplates = AssetCategory.InfluxIdentificationTemplates;
-            foreach (var influxIdentificationTemplate in influxIdentificationTemplates)
-            {
-                var instance = ObjectSpace.CreateObject<InfluxIdentificationInstance>();
-                instance.AssetAdministrationShell = this;
-                instance.InfluxIdentificationTemplate = influxIdentificationTemplate;
-                var bindings = influxIdentificationTemplate.InfluxTagKeyPropertyBindings;
-                foreach (var binding in bindings)
+                var instance = InfluxIdentificationInstances.FirstOrDefault(i => i.InfluxIdentificationTemplate == template);
+                if (instance == null)
                 {
-                    var influxTagValue = new InfluxTagValue(binding, this);
-                    var objectSpaceInfluxTagValue = ObjectSpace.CreateObject<InfluxTagValue>();
-                    objectSpaceInfluxTagValue.InfluxTagKey = binding.InfluxTagKey;
-                    objectSpaceInfluxTagValue.Value = influxTagValue.Value;
-                    binding.InfluxTagKey.InfluxTagValues.Add(objectSpaceInfluxTagValue);
-                    instance.InfluxTagValues.Add(objectSpaceInfluxTagValue);
+                    instance = ObjectSpace.CreateObject<InfluxIdentificationInstance>();
+                    instance.AssetAdministrationShell = this;
+                    instance.InfluxIdentificationTemplate = template;
+                    InfluxIdentificationInstances.Add(instance);
                 }
-                InfluxIdentificationInstances.Add(instance);
+                template.InfluxTagKeyPropertyBindings.ForEach(binding =>
+                {
+                    var tagValue = instance.InfluxTagValues.FirstOrDefault(v => v.InfluxTagKey == binding.InfluxTagKey);
+                    if (tagValue == null)
+                    {
+                        tagValue = ObjectSpace.CreateObject<InfluxTagValue>();
+                        tagValue.InfluxTagKey = binding.InfluxTagKey;
+                        instance.InfluxTagValues.Add(tagValue);
+                        binding.InfluxTagKey.InfluxTagValues.Add(tagValue);
+                    }
+                    var influxTagValue = new InfluxTagValue(binding, this);
+                    tagValue.Value = influxTagValue.Value;
+                });
+            });
 
-            }
-            if(commitChanges)
-            {
-                ObjectSpace.CommitChanges();
-                ObjectSpace.Refresh();
-            }
+            var unusedInstances = InfluxIdentificationInstances.Where(i => !AssetCategory.InfluxIdentificationTemplates.Contains(i.InfluxIdentificationTemplate)).ToList();
+            unusedInstances.ForEach(InfluxIdentificationInstances.Remove);
+        }
+
+        public override void OnSaving()
+        {
+            base.OnSaving();
+            UpdateIdentificationInstances();
         }
     }
 }
