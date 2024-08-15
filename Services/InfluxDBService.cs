@@ -278,13 +278,9 @@ public class InfluxDBService
                         tagList.Add(tagInfluxValue);
                     }
 
-                    InfluxDatapoint datapoint = new InfluxDatapoint()
-                    {
-                        Value = Convert.ToDouble(record.GetValue()),
-                        Time = (DateTime)record.GetTimeInDateTime(),
-                        InfluxField = currentField,
-                        InfluxTagValues = tagList,
-                    };
+                    InfluxDatapoint datapoint = new InfluxDatapoint((DateTime)record.GetTimeInDateTime(), record.GetValue());
+                    datapoint.InfluxField = currentField;
+                    datapoint.InfluxTagValues = tagList;
                     datapoints.Add(datapoint);
                 });
             });
