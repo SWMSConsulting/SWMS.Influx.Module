@@ -34,7 +34,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             {
                 return "";
             }
-            return $"{InfluxMeasurement.Name} - {AssetCategory.Name}";
+            return $"{InfluxMeasurement.DisplayName} - {AssetCategory.Name}";
         }
     }
 }

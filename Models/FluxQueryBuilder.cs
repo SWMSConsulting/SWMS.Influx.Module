@@ -1,5 +1,4 @@
-﻿using DevExpress.CodeParser;
-using SWMS.Influx.Module.BusinessObjects;
+﻿using SWMS.Influx.Module.BusinessObjects;
 
 namespace SWMS.Influx.Module.Models;
 
@@ -51,7 +50,7 @@ public class FluxQueryBuilder()
 
     public FluxQueryBuilder AddMeasurementFilter(InfluxMeasurement measurement)
     {
-        AppendFilter(FluxCompare(measurementFlux, measurement.Name));
+        AppendFilter(FluxCompare(measurementFlux, measurement.Identifier));
         return this;
     }
 
@@ -61,14 +60,14 @@ public class FluxQueryBuilder()
         {
             return this;
         }
-        var measurementFilters = measurements.Select(m => FluxCompare(measurementFlux, m.Name));
+        var measurementFilters = measurements.Select(m => FluxCompare(measurementFlux, m.Identifier));
         AppendFilter(JoinFilters(measurementFilters, combinatorOr));
         return this;
     }
 
     public FluxQueryBuilder AddFieldFilter(InfluxField field)
     {
-        AppendFilter(FluxCompare(fieldFlux, field.Name));
+        AppendFilter(FluxCompare(fieldFlux, field.Identifier));
         return this;
     }
 
@@ -78,7 +77,7 @@ public class FluxQueryBuilder()
         {
             return this;
         }
-        var fieldFilters = fields.Select(f => FluxCompare(fieldFlux, f.Name));
+        var fieldFilters = fields.Select(f => FluxCompare(fieldFlux, f.Identifier));
         AppendFilter(JoinFilters(fieldFilters, combinatorOr));
         return this;
     }
@@ -92,7 +91,7 @@ public class FluxQueryBuilder()
         var tagFilters = identifications.Select(i =>
         {
             return JoinFilters(i.InfluxTagValues.Select(t => {
-                return FluxCompare(t.InfluxTagKey.Name, t.Value);
+                return FluxCompare(t.InfluxTagKey.Identifier, t.Value);
             }), combinatorAnd);
         });
 

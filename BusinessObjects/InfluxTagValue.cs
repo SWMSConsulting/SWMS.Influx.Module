@@ -31,7 +31,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         [ExpandObjectMembers(ExpandObjectMembers.InListView)]
         public virtual InfluxTagKey InfluxTagKey { get; set; }
         public virtual string Value { get; set; }
-        public KeyValuePair<string, object> KeyValuePair => new(InfluxTagKey.Name , Value);
+        public KeyValuePair<string, object> KeyValuePair => new(InfluxTagKey.Identifier , Value);
         public virtual IList<InfluxIdentificationInstance> InfluxIdentificationInstances { get; set; } = new ObservableCollection<InfluxIdentificationInstance>();
 
         private BindingList<InfluxDatapoint> _Datapoints = new();
@@ -51,7 +51,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public override string ToString()
         {
-            return InfluxDBService.KeyValuePairToString(InfluxTagKey.Name, Value);
+            return InfluxDBService.KeyValuePairToString(InfluxTagKey.Identifier, Value);
         }
 
 

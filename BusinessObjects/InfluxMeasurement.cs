@@ -8,12 +8,13 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace SWMS.Influx.Module.BusinessObjects
 {
     [DefaultClassOptions]
-    //[ImageName("BO_Contact")]
-    [DefaultProperty(nameof(Name))]
+    [DefaultProperty(nameof(DisplayName))]
     [NavigationItem("Influx")]
     public class InfluxMeasurement : BaseObject
     {
-        public virtual string Name { get; set; }
+        public static string ColumnName = "Measurements";
+        public virtual string Identifier { get; set; }
+        public virtual string DisplayName { get; set; }
         public virtual IList<InfluxField> InfluxFields { get; set; } = new ObservableCollection<InfluxField>();
         public virtual IList<InfluxTagKey> InfluxTagKeys { get; set; } = new ObservableCollection<InfluxTagKey>();
         public virtual IList<InfluxIdentificationTemplate> InfluxIdentificationTemplates { get; set; } = new ObservableCollection<InfluxIdentificationTemplate>();
@@ -27,17 +28,18 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public async Task GetFields()
         {
-            var results = await InfluxDBService.GetInfluxFieldsForMeasurement(Name);
+            var results = await InfluxDBService.GetInfluxFieldsForMeasurement(Identifier);
 
             foreach(var result in results)
             {
-                if(InfluxFields.Any(f => f.Name == result.Name))
+                if(InfluxFields.Any(f => f.Identifier == result.Identifier))
                 {
                     continue;
                 }
 
                 var field = ObjectSpace.CreateObject<InfluxField>();
-                field.Name = result.Name;
+                field.Identifier = result.Identifier;
+                field.DisplayName = result.DisplayName;
                 InfluxFields.Add(field);
             }
 
@@ -46,16 +48,16 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public async Task GetTagKeys()
         {
-            var results = await InfluxDBService.GetInfluxTagKeysForMeasurement(Name);
+            var results = await InfluxDBService.GetInfluxTagKeysForMeasurement(Identifier);
 
             foreach (var result in results)
             {
-                if (InfluxTagKeys.Any(f => f.Name == result.Name) || result.Name.StartsWith("_"))
+                if (InfluxTagKeys.Any(f => f.Identifier == result.Identifier) || result.Identifier.StartsWith("_"))
                 {
                     continue;
                 }
                 var tag = ObjectSpace.CreateObject<InfluxTagKey>();
-                tag.Name = result.Name;
+                tag.Identifier = result.Identifier;
                 InfluxTagKeys.Add(tag);
             }
 

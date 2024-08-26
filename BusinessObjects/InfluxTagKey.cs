@@ -11,7 +11,7 @@ namespace SWMS.Influx.Module.BusinessObjects
     [DefaultProperty(nameof(Id))]
     public class InfluxTagKey : BaseObject
     {
-        public virtual string Name { get; set; }
+        public virtual string Identifier { get; set; }
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
         public virtual IList<InfluxTagKeyPropertyBinding> InfluxTagKeyPropertyBindings { get; set; } = new ObservableCollection<InfluxTagKeyPropertyBinding>();
         public virtual IList<InfluxTagValue> InfluxTagValues { get; set; } = new ObservableCollection<InfluxTagValue>();
@@ -25,9 +25,9 @@ namespace SWMS.Influx.Module.BusinessObjects
         {
             if (InfluxMeasurement == null)
             {
-                return Name;
+                return Identifier;
             }
-            return $"{InfluxMeasurement.Name} - {Name}";
+            return $"{InfluxMeasurement.Identifier} - {Identifier}";
         }
     }
 }

@@ -57,7 +57,8 @@ public class InfluxDBService
                     table.Records.Select(record =>
                         new InfluxMeasurement
                         {
-                            Name = record.GetValueByKey("_value").ToString(),
+                            Identifier = record.GetValueByKey("_value").ToString(),
+                            DisplayName = record.GetValueByKey("_value").ToString(),
                         }));
             }
             catch (Exception ex)
@@ -77,11 +78,12 @@ public class InfluxDBService
 
             foreach (var measurement in results)
             {
-                var existingMeasurement = allMeasurements.FirstOrDefault(x => x.Name == measurement.Name);
+                var existingMeasurement = allMeasurements.FirstOrDefault(x => x.Identifier == measurement.Identifier);
                 if (existingMeasurement == null)
                 {
                     existingMeasurement = objectSpace.CreateObject<InfluxMeasurement>();
-                    existingMeasurement.Name = measurement.Name;
+                    existingMeasurement.Identifier = measurement.Identifier;
+                    existingMeasurement.DisplayName = measurement.DisplayName;
                 }
 
                 await existingMeasurement.GetFields();
@@ -109,7 +111,8 @@ public class InfluxDBService
                 table.Records.Select(record =>
                     new InfluxField
                     {
-                        Name = record.GetValueByKey("_value").ToString()
+                        Identifier = record.GetValueByKey("_value").ToString(),
+                        DisplayName = record.GetValueByKey("_value").ToString()
                     }
                 )
             );
@@ -130,7 +133,7 @@ public class InfluxDBService
                 table.Records.Select(record =>
                     new InfluxTagKey
                     {
-                        Name = record.GetValueByKey("_value").ToString()
+                        Identifier = record.GetValueByKey("_value").ToString()
                     }
                 )
             );
@@ -263,7 +266,7 @@ public class InfluxDBService
 
                     foreach (var tag in recordTags)
                     {
-                        var influxTagKey = influxTagKeys.FirstOrDefault(x => x.Name == tag.Key && x.InfluxMeasurement.Name == record.GetMeasurement());
+                        var influxTagKey = influxTagKeys.FirstOrDefault(x => x.Identifier == tag.Key && x.InfluxMeasurement.Identifier == record.GetMeasurement());
                         if (influxTagKey == null)
                         {
                             return;
@@ -297,11 +300,11 @@ public class InfluxDBService
             return false;
         }
         var measurementName = record.GetMeasurement();
-        var fieldName = record.GetField();
+        var fieldIdentifier = record.GetField();
         //var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
         //var assetId = field.InfluxMeasurement.AssetAdministrationShell.AssetId;
-        var recordIsCurrentField = field.Name == fieldName &&
-            field.InfluxMeasurement.Name == measurementName;
+        var recordIsCurrentField = field.Identifier == fieldIdentifier &&
+            field.InfluxMeasurement.Identifier == measurementName;
         //record.GetValueByKey(influxIdentifier).ToString() == assetId;
         return recordIsCurrentField;
     }
@@ -315,12 +318,12 @@ public class InfluxDBService
 
     private static string GetFieldIdentifier(InfluxField field, IList<InfluxTagValue> influxTagValues)
     {
-        return $"{field.InfluxMeasurement.Name}_{field.Name}_{GetTagSetString(influxTagValues)}";
+        return $"{field.InfluxMeasurement.Identifier}_{field.Identifier}_{GetTagSetString(influxTagValues)}";
     }
 
     public static string GetTagSetString(IList<InfluxTagValue> influxTagValues)
     {
-        var orderedInfluxTagValues = influxTagValues.OrderBy(x => x.InfluxTagKey.Name);
+        var orderedInfluxTagValues = influxTagValues.OrderBy(x => x.InfluxTagKey.Identifier);
         return String.Join(",", orderedInfluxTagValues.Select(x => x.ToString()));
     }
 

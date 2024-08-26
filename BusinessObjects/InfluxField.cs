@@ -1,7 +1,5 @@
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
-using SWMS.Influx.Module.Models;
-using SWMS.Influx.Module.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -9,16 +7,16 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace SWMS.Influx.Module.BusinessObjects
 {
     [DefaultClassOptions]
-    //[ImageName("BO_Contact")]
-    [DefaultProperty(nameof(Name))]
+    [DefaultProperty(nameof(DisplayName))]
     [NavigationItem("Influx")]
     public class InfluxField : BaseObject
-    { 
+    {
+        public static string ColumnName = "Fields";
+        public virtual string Identifier { get; set; }
 
-        public virtual string Name { get; set; }
-        [ExpandObjectMembers(ExpandObjectMembers.InListView)]
+        public virtual string DisplayName { get; set; }
+        
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
-
 
         [NotMapped]
         public ObservableCollection<InfluxDatapoint> Datapoints { get; set; } = new ObservableCollection<InfluxDatapoint>();

@@ -37,7 +37,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public InfluxIdentificationInstance? GetInfluxIdentificationInstanceForMeasurement(string measurement)
         {
-            return InfluxIdentificationInstances.Where(i => i.InfluxMeasurement?.Name == measurement).FirstOrDefault();
+            return InfluxIdentificationInstances.Where(i => i.InfluxMeasurement?.Identifier == measurement).FirstOrDefault();
         }
 
         public double? GetLastDatapoint(string measurement, string field)
@@ -46,7 +46,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             if (identification == null)
                 return null;
 
-            var influxField = identification?.InfluxMeasurement.InfluxFields.Where(f => f.Name == field).FirstOrDefault();
+            var influxField = identification?.InfluxMeasurement.InfluxFields.Where(f => f.Identifier == field).FirstOrDefault();
             if (influxField == null)
                 return null;
 

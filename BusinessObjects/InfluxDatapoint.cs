@@ -95,10 +95,9 @@ namespace SWMS.Influx.Module.BusinessObjects
         {
             get
             {
-                var measurement = InfluxField.InfluxMeasurement.Name;
-                var tagSetString = TagSetString;
-                var field = $"{InfluxField.Name}";
-                return $"{measurement},{tagSetString} {field}";
+                var measurement = InfluxField.InfluxMeasurement.DisplayName;
+                var field = InfluxField.DisplayName;
+                return $"{field} ({measurement}): {TagSetString}";
             }
         }
 
@@ -107,9 +106,9 @@ namespace SWMS.Influx.Module.BusinessObjects
             get
             {
                 // Example lineprotocol: measurement,tag1=val1,tag2=val2 field1="v1",field2=1i 0000000000000000000
-                var measurement = InfluxField.InfluxMeasurement.Name;
+                var measurement = InfluxField.InfluxMeasurement.Identifier;
                 var tagSetString = TagSetString;
-                var fieldSetString = $"{InfluxField.Name}={Value}";
+                var fieldSetString = $"{InfluxField.DisplayName}={Value}";
                 var timeStamp = ((DateTimeOffset)Time).ToUnixTimeSeconds();
                 return $"{measurement},{tagSetString} {fieldSetString} {timeStamp}";
             }
