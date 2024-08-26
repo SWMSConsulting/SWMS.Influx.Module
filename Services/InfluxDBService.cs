@@ -6,6 +6,7 @@ using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Timers;
 
 namespace SWMS.Influx.Module.Services;
 
@@ -35,6 +36,7 @@ public class InfluxDBService
         _serviceScopeFactory = serviceScopeFactory;
 
         InitializeInfluxSchema();
+        SetupBackgroundWorker();
     }
 
     private static async void InitializeInfluxSchema()
@@ -281,13 +283,9 @@ public class InfluxDBService
                         tagList.Add(tagInfluxValue);
                     }
 
-                    InfluxDatapoint datapoint = new InfluxDatapoint()
-                    {
-                        Value = Convert.ToDouble(record.GetValue()),
-                        Time = (DateTime)record.GetTimeInDateTime(),
-                        InfluxField = currentField,
-                        InfluxTagValues = tagList,
-                    };
+                    InfluxDatapoint datapoint = new InfluxDatapoint((DateTime)record.GetTimeInDateTime(), record.GetValue());
+                    datapoint.InfluxField = currentField;
+                    datapoint.InfluxTagValues = tagList;
                     datapoints.Add(datapoint);
                 });
             });
@@ -347,6 +345,83 @@ public class InfluxDBService
     public static async Task<List<FluxTable>> QueryAsync(string flux)
     {
         return await _queryApi.QueryAsync(flux, Organization);
+    }
+    #endregion
+
+    #region Background Worker
+    private BackgroundWorker worker;
+    private void SetupBackgroundWorker()
+    {
+        var refreshRate = Environment.GetEnvironmentVariable("LAST_DATAPOINTS_REFRESH_RATE");
+
+        if (!double.TryParse(refreshRate, out double rate))
+            return;
+
+        Console.WriteLine($"Setting up Background Worker with refresh rate of {rate}s");
+
+        worker = new BackgroundWorker()
+        {
+            WorkerSupportsCancellation = true,
+                WorkerReportsProgress = true
+        };
+        worker.DoWork += worker_DoWork;
+        worker.ProgressChanged += worker_ProgressChanged;
+        worker.RunWorkerCompleted += worker_RunWorkerCompleted;
+
+        var timer = new System.Timers.Timer(TimeSpan.FromSeconds(rate));
+        timer.Elapsed += timer_Elapsed;
+        timer.Start();
+    }
+
+    void timer_Elapsed(object sender, ElapsedEventArgs e)
+    {
+        if (!worker.IsBusy)
+            worker.RunWorkerAsync();
+    }
+
+    async void worker_DoWork(object sender, DoWorkEventArgs e)
+    {
+        BackgroundWorker w = (BackgroundWorker)sender;
+
+        await RefreshLastDatapoints();
+        /*
+        while (condition)
+        {
+            //check if cancellation was requested
+            if (w.CancellationPending)
+            {
+                //take any necessary action upon cancelling (rollback, etc.)
+
+                //notify the RunWorkerCompleted event handler
+                //that the operation was cancelled
+                e.Cancel = true;
+                return;
+            }
+
+            //report progress; this method has an overload which can also take
+            //custom object (usually representing state) as an argument
+            w.ReportProgress(percentage);
+
+            //do whatever You want the background thread to do...
+        }
+        */
+    }
+
+    private void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+    {
+        //display the progress using e.ProgressPercentage and/or e.UserState
+    }
+
+    private void worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+    {
+        if (e.Cancelled)
+        {
+            //do something
+        }
+        else
+        {
+            //do something else
+        }
     }
     #endregion
 }

@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Application>
+  <NavigationItems Id="NavigationItems">
+    <Items Id="Items">
+      <Item Id="Default">
+        <Items Id="Items">
+          <Item Id="@1d7f798e-14a7-4535-9fae-00b2a12c71cb" ViewId="InfluxDashboardView" />
+        </Items>
+      </Item>
+    </Items>
+  </NavigationItems>
+</Application>
