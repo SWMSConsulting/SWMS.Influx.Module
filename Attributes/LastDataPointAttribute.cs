@@ -5,9 +5,11 @@
 public sealed class LastDatapointAttribute : Attribute
 {
     public string FieldIndentifier { get; }
+    public string? MeasurementIdentifier { get; }
 
-    public LastDatapointAttribute(string fieldIdentifier)
+    public LastDatapointAttribute(string fieldIdentifier, string? measurementIdentifier = null)
     {
         FieldIndentifier = fieldIdentifier;
+        MeasurementIdentifier = measurementIdentifier;
     }
 }

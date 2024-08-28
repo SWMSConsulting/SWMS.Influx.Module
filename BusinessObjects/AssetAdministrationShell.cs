@@ -101,10 +101,20 @@ namespace SWMS.Influx.Module.BusinessObjects
                 var attribute = Attribute.GetCustomAttribute(property, typeof(LastDatapointAttribute)) as LastDatapointAttribute;
                 if (attribute != null)
                 {
-                    var field = InfluxFields?.FirstOrDefault(x => x.Identifier == attribute.FieldIndentifier);
-                    var identification = InfluxIdentificationInstances.FirstOrDefault(x => x.InfluxMeasurement == field.InfluxMeasurement);
+                    var fields = InfluxFields;
+                    if(attribute.MeasurementIdentifier != null)
+                    {
+                        var measurement = InfluxMeasurements?.FirstOrDefault(x => x.Identifier == attribute.MeasurementIdentifier);
+                        fields = measurement?.InfluxFields;
+                    }
+                    var field = fields?.FirstOrDefault(x => x.Identifier == attribute.FieldIndentifier);
+                    var identification = InfluxIdentificationInstances?.FirstOrDefault(x => x.InfluxMeasurement == field?.InfluxMeasurement);
                     if (field == null || identification == null)
+                    {
                         property.SetValue(this, null);
+                        Console.WriteLine($"Last Datapoint: Could not find field {attribute.FieldIndentifier} for measurement {attribute.MeasurementIdentifier}");
+                        continue;
+                    }
 
                     property.SetValue(this, InfluxDBService.GetLastDatapointForField(field, identification)?.Value);
                 }
