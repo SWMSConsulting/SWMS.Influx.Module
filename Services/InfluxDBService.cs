@@ -151,7 +151,18 @@ public class InfluxDBService
 
     public static async Task RefreshLastDatapoints()
     {
-        var datapoints = await QueryLastDatapoints("-30d");
+        using var scope = _serviceScopeFactory.CreateScope();
+        var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+        var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+        var measurements = objectSpace.GetObjects<InfluxMeasurement>().Where(m => m.IsInUse).ToList();
+
+        if (measurements.Count == 0)
+        {
+            Console.WriteLine("No relevant measurements found");
+            return;
+        }
+
+        var datapoints = await QueryLastDatapoints("-30d", measurements);
         // InfluxField.ID would also be possible as key, but is less readable
         LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField, x.InfluxTagValues), x => x);
         Console.WriteLine($"Last Datapoints refreshed: {LastDatapoints.Count}");
@@ -159,23 +170,15 @@ public class InfluxDBService
 
     private static CancellationTokenSource cancellationTokenSourceLastDp = new CancellationTokenSource();
 
-    private static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
+    private static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration, IList<InfluxMeasurement> measurements)
     {
         cancellationTokenSourceLastDp.Cancel();
         cancellationTokenSourceLastDp = new CancellationTokenSource();
 
-        using var scope = _serviceScopeFactory.CreateScope();
-        var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
-        var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
-        var relevantFields = objectSpace.GetObjects<InfluxMeasurement>()
-            .Where(m => m.IsInUse)
-            .SelectMany(m => m.InfluxFields)
-            .ToList();
-
         var fluxRange = new FluxRange(fluxDuration, FluxRange.Now);
         return await QueryInfluxDatapoints(
             fluxRange: fluxRange,
-            influxFields: relevantFields,
+            influxMeasurements: measurements,
             pipe: FluxQueryPipe.Last,
             cancellationToken: cancellationTokenSourceLastDp.Token
         );
@@ -188,6 +191,7 @@ public class InfluxDBService
         FluxRange fluxRange,
         FluxAggregateWindow? aggregateWindow = null,
         IEnumerable<InfluxField>? influxFields = null,
+        IEnumerable<InfluxMeasurement>? influxMeasurements = null,
         IEnumerable<InfluxIdentificationInstance>? influxIdentificationInstances = null,
         FluxQueryPipe? pipe = null
         )
@@ -198,6 +202,7 @@ public class InfluxDBService
             fluxRange: fluxRange,
             aggregateWindow: aggregateWindow,
             influxFields: influxFields,
+            influxMeasurements: influxMeasurements,
             influxIdentificationInstances: influxIdentificationInstances,
             pipe: pipe,
             cancellationToken: cancellationTokenSourceQueryDp.Token
@@ -208,6 +213,7 @@ public class InfluxDBService
         FluxRange fluxRange,
         FluxAggregateWindow? aggregateWindow = null,
         IEnumerable<InfluxField>? influxFields = null,
+        IEnumerable<InfluxMeasurement>? influxMeasurements = null,
         IEnumerable<InfluxIdentificationInstance>? influxIdentificationInstances = null,
         FluxQueryPipe? pipe = null,
         CancellationToken cancellationToken = default
@@ -217,8 +223,8 @@ public class InfluxDBService
             .AddBucket(_bucket)
             .AddRange(fluxRange)
             .AddAggregation(aggregateWindow)
-            .AddMeasurementFilter(influxFields?.Select(f => f.InfluxMeasurement).Distinct())
-            .AddFieldFilter(influxFields.Distinct())
+            .AddMeasurementFilter(influxMeasurements?.Distinct())
+            .AddFieldFilter(influxFields?.Distinct())
             .AddTagFilter(influxIdentificationInstances)
             .AddPipe(pipe)
             .Build();
