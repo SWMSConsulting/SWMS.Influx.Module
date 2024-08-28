@@ -1,8 +1,10 @@
 using Aqua.EnumerableExtensions;
+using DevExpress.ExpressApp.Blazor.Components;
 using DevExpress.ExpressApp.DC;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using DevExpress.Persistent.Validation;
+using SWMS.Influx.Module.Attributes;
 using SWMS.Influx.Module.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -14,6 +16,12 @@ namespace SWMS.Influx.Module.BusinessObjects
     [XafDefaultProperty(nameof(Caption))]
     public abstract class AssetAdministrationShell : BaseObject
     {
+        public override void OnLoaded()
+        {
+            UpdateProperties();
+            base.OnLoaded();
+        }
+
         [Browsable(false)]
         public abstract string Caption { get; }
 
@@ -82,6 +90,25 @@ namespace SWMS.Influx.Module.BusinessObjects
         {
             base.OnSaving();
             UpdateIdentificationInstances();
+        }
+
+        public void UpdateProperties()
+        {
+            var properties = this.GetType().GetProperties();
+
+            foreach (var property in properties)
+            {
+                var attribute = Attribute.GetCustomAttribute(property, typeof(LastDatapointAttribute)) as LastDatapointAttribute;
+                if (attribute != null)
+                {
+                    var field = InfluxFields?.FirstOrDefault(x => x.Identifier == attribute.FieldIndentifier);
+                    var identification = InfluxIdentificationInstances.FirstOrDefault(x => x.InfluxMeasurement == field.InfluxMeasurement);
+                    if (field == null || identification == null)
+                        property.SetValue(this, null);
+
+                    property.SetValue(this, InfluxDBService.GetLastDatapointForField(field, identification)?.Value);
+                }
+            }
         }
     }
 }
