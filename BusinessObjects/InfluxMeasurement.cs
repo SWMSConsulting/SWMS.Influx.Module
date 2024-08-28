@@ -21,6 +21,9 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual IList<PredefinedQuerySettings> PredefinedSettings { get; set; } = new ObservableCollection<PredefinedQuerySettings>();
 
         [NotMapped]
+        public bool IsInUse => InfluxIdentificationTemplates.Count > 0;
+
+        [NotMapped]
         public IEnumerable<InfluxIdentificationInstance> InfluxIdentificationInstances => InfluxIdentificationTemplates.SelectMany(x => x.InfluxIdentificationInstances);
 
         [NotMapped]

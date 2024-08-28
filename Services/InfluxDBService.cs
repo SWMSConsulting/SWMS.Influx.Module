@@ -151,7 +151,7 @@ public class InfluxDBService
 
     public static async Task RefreshLastDatapoints()
     {
-        var datapoints = await QueryLastDatapoints("-24h");
+        var datapoints = await QueryLastDatapoints("-30d");
         // InfluxField.ID would also be possible as key, but is less readable
         LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField, x.InfluxTagValues), x => x);
         Console.WriteLine($"Last Datapoints refreshed: {LastDatapoints.Count}");
@@ -164,9 +164,18 @@ public class InfluxDBService
         cancellationTokenSourceLastDp.Cancel();
         cancellationTokenSourceLastDp = new CancellationTokenSource();
 
+        using var scope = _serviceScopeFactory.CreateScope();
+        var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+        var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+        var relevantFields = objectSpace.GetObjects<InfluxMeasurement>()
+            .Where(m => m.IsInUse)
+            .SelectMany(m => m.InfluxFields)
+            .ToList();
+
         var fluxRange = new FluxRange(fluxDuration, FluxRange.Now);
         return await QueryInfluxDatapoints(
             fluxRange: fluxRange,
+            influxFields: relevantFields,
             pipe: FluxQueryPipe.Last,
             cancellationToken: cancellationTokenSourceLastDp.Token
         );
@@ -208,8 +217,8 @@ public class InfluxDBService
             .AddBucket(_bucket)
             .AddRange(fluxRange)
             .AddAggregation(aggregateWindow)
-            .AddMeasurementFilter(influxFields?.Select(f => f.InfluxMeasurement))
-            .AddFieldFilter(influxFields)
+            .AddMeasurementFilter(influxFields?.Select(f => f.InfluxMeasurement).Distinct())
+            .AddFieldFilter(influxFields.Distinct())
             .AddTagFilter(influxIdentificationInstances)
             .AddPipe(pipe)
             .Build();

@@ -26,6 +26,9 @@ namespace SWMS.Influx.Module.BusinessObjects
         [NotMapped]
         public IList<InfluxMeasurement> InfluxMeasurements => AssetCategory?.InfluxMeasurements;
 
+        [NotMapped]
+        public IList<InfluxField> InfluxFields => InfluxMeasurements?.SelectMany(m => m.InfluxFields).ToList();
+
         public InfluxIdentificationInstance? GetInfluxIdentificationInstanceForMeasurement(string measurement)
         {
             return InfluxIdentificationInstances.Where(i => i.InfluxMeasurement?.Identifier == measurement).FirstOrDefault();
