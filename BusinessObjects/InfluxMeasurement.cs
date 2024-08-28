@@ -10,6 +10,7 @@ namespace SWMS.Influx.Module.BusinessObjects
     [DefaultClassOptions]
     [DefaultProperty(nameof(DisplayName))]
     [NavigationItem("Influx")]
+    [ImageName("ChartType_Line")]
     public class InfluxMeasurement : BaseObject
     {
         public static string ColumnName = "Measurements";

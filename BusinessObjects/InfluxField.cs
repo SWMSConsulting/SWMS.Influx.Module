@@ -9,13 +9,22 @@ namespace SWMS.Influx.Module.BusinessObjects
     [DefaultClassOptions]
     [DefaultProperty(nameof(DisplayName))]
     [NavigationItem("Influx")]
+    [ImageName("ChartType_Line")]
     public class InfluxField : BaseObject
     {
+        public override void OnCreated()
+        {
+            IsVisibleInChart = true;
+            IsVisibleInTable = true;
+
+            base.OnCreated();
+        }
+
         public static string ColumnName = "Fields";
         public virtual string Identifier { get; set; }
-
         public virtual string DisplayName { get; set; }
-        
+        public virtual bool IsVisibleInTable { get; set; }
+        public virtual bool IsVisibleInChart { get; set; }
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
 
         [NotMapped]

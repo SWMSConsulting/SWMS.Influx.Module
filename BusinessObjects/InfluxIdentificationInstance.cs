@@ -8,6 +8,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 {
     [DefaultClassOptions]
     [NavigationItem("Influx")]
+    [ImageName("ChartType_Line")]
     public class InfluxIdentificationInstance : BaseObject
     {
         public virtual AssetAdministrationShell AssetAdministrationShell { get; set; }

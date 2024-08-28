@@ -10,6 +10,7 @@ namespace SWMS.Influx.Module.BusinessObjects
     [DomainComponent]
     [DefaultClassOptions]
     [NavigationItem("Influx")]
+    [ImageName("ChartType_Line")]
     public class InfluxDatapoint : BaseObject
     {
         public InfluxDatapoint(DateTime time, object value)
@@ -34,6 +35,8 @@ namespace SWMS.Influx.Module.BusinessObjects
         public InfluxField InfluxField { get; set; }
 
         public BindingList<InfluxTagValue> InfluxTagValues { get; set; } = new BindingList<InfluxTagValue>();
+
+        public InfluxMeasurement InfluxMeasurement => InfluxField?.InfluxMeasurement;
 
         public string TagSetString => InfluxDBService.GetTagSetString(InfluxTagValues);
 
