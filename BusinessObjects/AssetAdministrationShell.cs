@@ -98,25 +98,50 @@ namespace SWMS.Influx.Module.BusinessObjects
 
             foreach (var property in properties)
             {
-                var attribute = Attribute.GetCustomAttribute(property, typeof(LastDatapointAttribute)) as LastDatapointAttribute;
-                if (attribute != null)
+                var ldpAttribute = Attribute.GetCustomAttribute(property, typeof(LastDatapointAttribute)) as LastDatapointAttribute;
+                if (ldpAttribute != null)
                 {
                     var fields = InfluxFields;
-                    if(attribute.MeasurementIdentifier != null)
+                    if(ldpAttribute.MeasurementIdentifier != null)
                     {
-                        var measurement = InfluxMeasurements?.FirstOrDefault(x => x.Identifier == attribute.MeasurementIdentifier);
+                        var measurement = InfluxMeasurements?.FirstOrDefault(x => x.Identifier == ldpAttribute.MeasurementIdentifier);
                         fields = measurement?.InfluxFields;
                     }
-                    var field = fields?.FirstOrDefault(x => x.Identifier == attribute.FieldIndentifier);
+                    var field = fields?.FirstOrDefault(x => x.Identifier == ldpAttribute.FieldIndentifier);
                     var identification = InfluxIdentificationInstances?.FirstOrDefault(x => x.InfluxMeasurement == field?.InfluxMeasurement);
                     if (field == null || identification == null)
                     {
                         property.SetValue(this, null);
-                        Console.WriteLine($"Last Datapoint: Could not find field {attribute.FieldIndentifier} for measurement {attribute.MeasurementIdentifier}");
+                        Console.WriteLine($"Last Datapoint: Could not find field {ldpAttribute.FieldIndentifier} for measurement {ldpAttribute.MeasurementIdentifier}");
                         continue;
                     }
 
                     property.SetValue(this, InfluxDBService.GetLastDatapointForField(field, identification)?.Value);
+                }
+
+                var cqaAttribute = Attribute.GetCustomAttribute(property, typeof(CachedQueryAttribute)) as CachedQueryAttribute;
+                if (cqaAttribute != null)
+                {
+                    var fields = InfluxFields;
+                    if (cqaAttribute.MeasurementIdentifier != null)
+                    {
+                        var measurement = InfluxMeasurements?.FirstOrDefault(x => x.Identifier == cqaAttribute.MeasurementIdentifier);
+                        fields = measurement?.InfluxFields;
+                    }
+                    var field = fields?.FirstOrDefault(x => x.Identifier == cqaAttribute.FieldIndentifier);
+                    var identification = InfluxIdentificationInstances?.FirstOrDefault(x => x.InfluxMeasurement == field?.InfluxMeasurement);
+                    if (field == null || identification == null)
+                    {
+                        property.SetValue(this, null);
+                        Console.WriteLine($"Last Datapoint: Could not find field {cqaAttribute.FieldIndentifier} for measurement {cqaAttribute.MeasurementIdentifier}");
+                        continue;
+                    }
+                    var datapoints = InfluxDBService.GetCachedQueryValues(cqaAttribute.CachedQueryIdentifier, field, identification);
+                    Type type = property.PropertyType;
+                    if (type.IsAssignableTo(typeof(IList<InfluxDatapoint>)))
+                    {
+                        property.SetValue(this, datapoints);
+                    }
                 }
             }
         }

@@ -1,4 +1,5 @@
-﻿using DevExpress.ExpressApp.Core;
+﻿using DevExpress.ExpressApp.Blazor.Components;
+using DevExpress.ExpressApp.Core;
 using InfluxDB.Client;
 using InfluxDB.Client.Core.Flux.Domain;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,8 @@ public class InfluxDBService
     private readonly static QueryApi _queryApi = _client.GetQueryApi();
     private static Dictionary<string, InfluxDatapoint> LastDatapoints { get; set; } = new Dictionary<string, InfluxDatapoint>();
     
+    private static Dictionary<string, Dictionary<string, List<InfluxDatapoint>>> CachedQueries { get; set; } = new Dictionary<string, Dictionary<string, List<InfluxDatapoint>>>();
+
     private static IServiceScopeFactory _serviceScopeFactory;
 
     public InfluxDBService(IServiceScopeFactory serviceScopeFactory)
@@ -43,6 +46,7 @@ public class InfluxDBService
     {
         await QueryInfluxMeasurements();
         await RefreshLastDatapoints();
+        await RefreshCachedQueries();
     }
 
 
@@ -149,6 +153,45 @@ public class InfluxDBService
         return LastDatapoints.GetValueOrDefault(GetFieldIdentifier(field, identification));
     }
 
+    public static List<InfluxDatapoint> GetCachedQueryValues(string cachedQueryIdentifier, InfluxField field, InfluxIdentificationInstance identification)
+    {
+        return CachedQueries.GetValueOrDefault(cachedQueryIdentifier)?.GetValueOrDefault(GetFieldIdentifier(field, identification)) ?? new List<InfluxDatapoint>();
+    }
+
+    public static async Task RefreshCachedQueries()
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+        var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<CachedQuery>();
+        var queries = objectSpace.GetObjects<CachedQuery>().ToList();
+
+        queries.ForEach(query => RefreshCachedQuery(query));
+    }
+
+    public static async Task RefreshCachedQuery(CachedQuery query)
+    {
+        var datapoints = await QueryInfluxDatapointsWithCancellation(
+                fluxRange: new FluxRange(query.QuerySettings.RangeQuantifierStart, query.QuerySettings.RangeQuantifierEnd),
+                aggregateWindow: new FluxAggregateWindow(query.QuerySettings.AggregateWindow, query.QuerySettings.AggregateFunction),
+                //aggregateFunction: query.QuerySettings.AggregateFunction,
+                influxFields: query.InfluxFields,
+                influxMeasurements: query.InfluxFields.Select(x => x.InfluxMeasurement).Distinct()
+            );
+
+        var dictionaryResult = new Dictionary<string, List<InfluxDatapoint>>();
+        datapoints.ForEach(dp =>
+        {
+            var key = GetFieldIdentifier(dp.InfluxField, dp.InfluxTagValues);
+            if (!dictionaryResult.ContainsKey(key))
+            {
+                dictionaryResult[key] = new List<InfluxDatapoint>();
+            }
+            dictionaryResult[key].Add(dp);
+        });
+
+        CachedQueries[query.Identifier] = dictionaryResult;
+    }
+
     public static async Task RefreshLastDatapoints()
     {
         using var scope = _serviceScopeFactory.CreateScope();
@@ -176,7 +219,7 @@ public class InfluxDBService
         cancellationTokenSourceLastDp = new CancellationTokenSource();
 
         var fluxRange = new FluxRange(fluxDuration, FluxRange.Now);
-        return await QueryInfluxDatapoints(
+        return await QueryInfluxDatapointsWithCancellation(
             fluxRange: fluxRange,
             influxMeasurements: measurements,
             pipe: FluxQueryPipe.Last,
@@ -198,7 +241,7 @@ public class InfluxDBService
     {
         cancellationTokenSourceQueryDp.Cancel();
         cancellationTokenSourceQueryDp = new CancellationTokenSource();
-        return await QueryInfluxDatapoints(
+        return await QueryInfluxDatapointsWithCancellation(
             fluxRange: fluxRange,
             aggregateWindow: aggregateWindow,
             influxFields: influxFields,
@@ -209,7 +252,7 @@ public class InfluxDBService
         );
     }
 
-    private static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
+    private static async Task<List<InfluxDatapoint>> QueryInfluxDatapointsWithCancellation(
         FluxRange fluxRange,
         FluxAggregateWindow? aggregateWindow = null,
         IEnumerable<InfluxField>? influxFields = null,
@@ -399,27 +442,7 @@ public class InfluxDBService
         BackgroundWorker w = (BackgroundWorker)sender;
 
         await RefreshLastDatapoints();
-        /*
-        while (condition)
-        {
-            //check if cancellation was requested
-            if (w.CancellationPending)
-            {
-                //take any necessary action upon cancelling (rollback, etc.)
-
-                //notify the RunWorkerCompleted event handler
-                //that the operation was cancelled
-                e.Cancel = true;
-                return;
-            }
-
-            //report progress; this method has an overload which can also take
-            //custom object (usually representing state) as an argument
-            w.ReportProgress(percentage);
-
-            //do whatever You want the background thread to do...
-        }
-        */
+        await RefreshCachedQueries();
     }
 
     private void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
