@@ -55,6 +55,10 @@ namespace SWMS.Influx.Module.BusinessObjects
             return InfluxDBService.GetLastDatapointForField(influxField, identification);
         }
 
+        [Action(
+            Caption = "Update Identification Instances",
+            AutoCommit = true
+        )]
         public void UpdateIdentificationInstances()
         {
             AssetCategory?.InfluxIdentificationTemplates.ForEach(template =>
@@ -73,10 +77,11 @@ namespace SWMS.Influx.Module.BusinessObjects
                     if (tagValue == null)
                     {
                         tagValue = ObjectSpace.CreateObject<InfluxTagValue>();
-                        tagValue.InfluxTagKey = binding.InfluxTagKey;
                         instance.InfluxTagValues.Add(tagValue);
                         binding.InfluxTagKey.InfluxTagValues.Add(tagValue);
                     }
+                    tagValue.InfluxTagKey = binding.InfluxTagKey;
+
                     var influxTagValue = new InfluxTagValue(binding, this);
                     tagValue.Value = influxTagValue.Value;
                 });
@@ -88,8 +93,8 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         public override void OnSaving()
         {
-            base.OnSaving();
             UpdateIdentificationInstances();
+            base.OnSaving();
         }
 
         public void UpdateProperties()
@@ -116,7 +121,16 @@ namespace SWMS.Influx.Module.BusinessObjects
                         continue;
                     }
 
-                    property.SetValue(this, InfluxDBService.GetLastDatapointForField(field, identification)?.Value);
+                    var lastDatapoint = InfluxDBService.GetLastDatapointForField(field, identification);
+
+                    if (property.PropertyType.IsAssignableFrom(typeof(DateTime?)))
+                    {
+                        property.SetValue(this, lastDatapoint?.Time);
+                    }
+                    else
+                    {
+                        property.SetValue(this, lastDatapoint?.Value);
+                    }
                 }
             }
         }
