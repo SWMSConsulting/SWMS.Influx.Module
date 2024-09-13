@@ -16,8 +16,12 @@ namespace SWMS.Influx.Module.BusinessObjects
         public InfluxTagValue() { }
         public InfluxTagValue(InfluxTagKeyPropertyBinding binding, object assetAdministrationShell)
         {
-            var wrapped = ObjectAccessor.Create(assetAdministrationShell);
             string propName = binding.ImplementingClassPropertyName;
+            if (assetAdministrationShell.GetType().GetProperty(propName) == null)
+            {
+                return;
+            } 
+            var wrapped = ObjectAccessor.Create(assetAdministrationShell);
             var propValue = wrapped[propName];
             InfluxTagKey = binding.InfluxTagKey;
             Value = propValue?.ToString();
