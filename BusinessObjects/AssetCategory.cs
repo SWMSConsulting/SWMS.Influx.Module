@@ -1,3 +1,4 @@
+using Aqua.EnumerableExtensions;
 using DevExpress.ExpressApp.DC;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
@@ -31,5 +32,13 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         [NotMapped]
         public IList<InfluxField> InfluxFields => InfluxMeasurements.SelectMany(m => m.InfluxFields).Distinct().ToList();
+
+        [Action(
+            Caption = "Update all Identification Instances"
+        )]
+        public void UpdateAllIdentificationInstances()
+        {
+            AssetAdministrationShells.ForEach(shell => shell.UpdateIdentificationInstancesAndSave());
+        }
     }
 }

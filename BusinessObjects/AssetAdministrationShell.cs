@@ -59,7 +59,13 @@ namespace SWMS.Influx.Module.BusinessObjects
             Caption = "Update Identification Instances",
             AutoCommit = true
         )]
-        public void UpdateIdentificationInstances()
+        public void UpdateIdentificationInstancesAndSave()
+        {
+            UpdateIdentificationInstances();
+            ObjectSpace.CommitChanges();
+        }
+
+        private void UpdateIdentificationInstances()
         {
             AssetCategory?.InfluxIdentificationTemplates.ForEach(template =>
             {
@@ -80,10 +86,10 @@ namespace SWMS.Influx.Module.BusinessObjects
                         instance.InfluxTagValues.Add(tagValue);
                         binding.InfluxTagKey.InfluxTagValues.Add(tagValue);
                     }
-                    tagValue.InfluxTagKey = binding.InfluxTagKey;
 
                     var influxTagValue = new InfluxTagValue(binding, this);
                     tagValue.Value = influxTagValue.Value;
+                    tagValue.InfluxTagKey = influxTagValue.InfluxTagKey;
                 });
             });
 
