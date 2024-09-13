@@ -24,12 +24,6 @@ namespace SWMS.Influx.Module.BusinessObjects
         [NotMapped]
         public bool IsInUse => InfluxIdentificationTemplates.Count > 0;
 
-        [NotMapped]
-        public IEnumerable<InfluxIdentificationInstance> InfluxIdentificationInstances => InfluxIdentificationTemplates.SelectMany(x => x.InfluxIdentificationInstances);
-
-        [NotMapped]
-        public IEnumerable<AssetAdministrationShell> AssetAdministrationShells => InfluxIdentificationInstances.Select(x => x.AssetAdministrationShell);
-
         public async Task GetFields()
         {
             var results = await InfluxDBService.GetInfluxFieldsForMeasurement(Identifier);

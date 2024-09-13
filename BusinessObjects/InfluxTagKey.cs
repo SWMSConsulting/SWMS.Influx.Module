@@ -14,8 +14,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual string Identifier { get; set; }
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
         public virtual IList<InfluxTagKeyPropertyBinding> InfluxTagKeyPropertyBindings { get; set; } = new ObservableCollection<InfluxTagKeyPropertyBinding>();
-        public virtual IList<InfluxTagValue> InfluxTagValues { get; set; } = new ObservableCollection<InfluxTagValue>();
-
+       
 
         [NotMapped]
         [VisibleInDetailView(false), VisibleInListView(false), VisibleInLookupListView(false)]
