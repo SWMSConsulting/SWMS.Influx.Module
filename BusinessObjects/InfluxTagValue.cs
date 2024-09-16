@@ -10,7 +10,12 @@ namespace SWMS.Influx.Module.BusinessObjects
     [NavigationItem("Influx")]
     public class InfluxTagValue 
     {
-        public InfluxTagValue() { }
+        public InfluxTagValue(InfluxTagKey influxTagKey, string value)
+        {
+            InfluxTagKey = influxTagKey;
+            Value = value;
+        }
+
         public InfluxTagValue(InfluxTagKeyPropertyBinding binding, object assetAdministrationShell)
         {
             string propName = binding.ImplementingClassPropertyName;
@@ -27,11 +32,13 @@ namespace SWMS.Influx.Module.BusinessObjects
         public InfluxTagKey InfluxTagKey { get; set; }
 
         public string Value { get; set; }
-
-        public KeyValuePair<string, object> KeyValuePair => new(InfluxTagKey.Identifier , Value);
        
         public override string ToString()
         {
+            if(InfluxTagKey == null)
+            {
+                return "";
+            }
             return InfluxDBService.KeyValuePairToString(InfluxTagKey.Identifier, Value);
         }
     }

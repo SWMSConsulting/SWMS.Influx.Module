@@ -146,7 +146,8 @@ public class InfluxDBService
     #region Query Last Datapoints
     public static InfluxDatapoint GetLastDatapointForField(InfluxField field, InfluxIdentificationInstance identification)
     {
-        return LastDatapoints.GetValueOrDefault(GetFieldIdentifier(field, identification));
+        var identifier = GetFieldIdentifier(field, identification);
+        return LastDatapoints.GetValueOrDefault(identifier);
     }
 
     public static async Task RefreshLastDatapoints()
@@ -288,14 +289,7 @@ public class InfluxDBService
                         {
                             return;
                         }
-                        var tagInfluxValue = new InfluxTagValue()
-                        {
-                            InfluxTagKey = influxTagKey,
-                            Value = tag.Value.ToString()
-                        };
-                        tagInfluxValue.InfluxTagKey = influxTagKey;
-                        tagInfluxValue.Value = tag.Value.ToString();
-                        tagList.Add(tagInfluxValue);
+                        tagList.Add(new InfluxTagValue(influxTagKey, tag.Value.ToString()));
                     }
 
                     InfluxDatapoint datapoint = new InfluxDatapoint((DateTime)record.GetTimeInDateTime(), record.GetValue());
@@ -336,7 +330,7 @@ public class InfluxDBService
 
     public static string GetTagSetString(IList<InfluxTagValue> influxTagValues)
     {
-        var orderedInfluxTagValues = influxTagValues.OrderBy(x => x.InfluxTagKey.Identifier);
+        var orderedInfluxTagValues = influxTagValues.OrderBy(x => x.InfluxTagKey?.Identifier);
         return String.Join(",", orderedInfluxTagValues.Select(x => x.ToString()));
     }
 

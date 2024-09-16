@@ -14,6 +14,7 @@ namespace SWMS.Influx.Module.BusinessObjects
 {
     [NavigationItem("Influx")]
     [XafDefaultProperty(nameof(Caption))]
+    //[NotMapped]
     public abstract class AssetAdministrationShell : BaseObject
     {
         public override void OnLoaded()
@@ -37,12 +38,13 @@ namespace SWMS.Influx.Module.BusinessObjects
                 {
                     return new InfluxIdentificationInstance
                     {
+                        AssetAdministrationShell = this,
                         InfluxIdentificationTemplate = t,
                         InfluxTagValues = t.InfluxTagKeyPropertyBindings
                             .Select(binding => new InfluxTagValue(binding, this))
                             .ToList()
                     };
-                }).ToList();
+                }).ToList() ?? new List<InfluxIdentificationInstance>();
             }
         }
 

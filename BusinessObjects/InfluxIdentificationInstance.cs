@@ -10,6 +10,7 @@ namespace SWMS.Influx.Module.BusinessObjects
     [ImageName("ChartType_Line")]
     public class InfluxIdentificationInstance 
     {
+        public AssetAdministrationShell AssetAdministrationShell { get; set; }
         public InfluxIdentificationTemplate InfluxIdentificationTemplate { get; set; }
 
         public IList<InfluxTagValue> InfluxTagValues { get; set; } = new ObservableCollection<InfluxTagValue>();
@@ -17,7 +18,5 @@ namespace SWMS.Influx.Module.BusinessObjects
         public InfluxMeasurement InfluxMeasurement => InfluxIdentificationTemplate?.InfluxMeasurement;
 
         public string TagSetString => InfluxDBService.GetTagSetString(InfluxTagValues);
-        
-        public List<KeyValuePair<string, object>> TagKeyValuePairs => InfluxTagValues.Select(x => x.KeyValuePair).ToList();
     }
 }
