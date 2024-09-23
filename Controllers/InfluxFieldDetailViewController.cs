@@ -40,7 +40,7 @@ namespace SWMS.Influx.Module.Controllers
 
         async Task GetDatapointsForCurrentObject()
         {
-            throw new NotImplementedException();
+            return;
             /*
             InfluxField currentObject = View.CurrentObject as InfluxField;
 
