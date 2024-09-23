@@ -13,7 +13,7 @@ namespace SWMS.Influx.Module.BusinessObjects
     [ImageName("ChartType_Line")]
     public class InfluxMeasurement : BaseObject
     {
-        public static string ColumnName = "Measurements";
+        public static string ColumnName = "Measurement";
         public virtual string Identifier { get; set; }
         public virtual string DisplayName { get; set; }
         public virtual IList<InfluxField> InfluxFields { get; set; } = new ObservableCollection<InfluxField>();

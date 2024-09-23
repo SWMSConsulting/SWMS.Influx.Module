@@ -1,3 +1,5 @@
+using DevExpress.ExpressApp;
+using DevExpress.ExpressApp.DC;
 using DevExpress.Persistent.Base;
 using FastMember;
 using SWMS.Influx.Module.Services;
@@ -5,10 +7,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
-    [NotMapped]
     [DefaultClassOptions]
     [NavigationItem("Influx")]
-    public class InfluxTagValue 
+    [NotMapped, DomainComponent]
+    public class InfluxTagValue: NonPersistentBaseObject
     {
         public InfluxTagValue(InfluxTagKey influxTagKey, string value)
         {

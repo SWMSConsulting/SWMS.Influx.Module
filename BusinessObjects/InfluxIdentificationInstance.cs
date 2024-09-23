@@ -1,3 +1,5 @@
+using DevExpress.ExpressApp;
+using DevExpress.ExpressApp.DC;
 using DevExpress.Persistent.Base;
 using SWMS.Influx.Module.Services;
 using System.Collections.ObjectModel;
@@ -5,10 +7,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
-    [NotMapped]
     [NavigationItem("Influx")]
     [ImageName("ChartType_Line")]
-    public class InfluxIdentificationInstance 
+    [NotMapped, DomainComponent]
+    public class InfluxIdentificationInstance: NonPersistentBaseObject
     {
         public AssetAdministrationShell AssetAdministrationShell { get; set; }
         public InfluxIdentificationTemplate InfluxIdentificationTemplate { get; set; }
