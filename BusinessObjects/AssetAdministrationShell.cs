@@ -14,7 +14,6 @@ namespace SWMS.Influx.Module.BusinessObjects
 {
     [NavigationItem("Influx")]
     [XafDefaultProperty(nameof(Caption))]
-    //[NotMapped]
     public abstract class AssetAdministrationShell : BaseObject
     {
         public override void OnLoaded()
@@ -27,7 +26,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         public abstract string Caption { get; }
 
         [RuleRequiredField]
-        public virtual AssetCategory AssetCategory { get; set; }
+        public abstract AssetCategory AssetCategory { get; }
     
         [Aggregated]
         public IList<InfluxIdentificationInstance> InfluxIdentificationInstances
