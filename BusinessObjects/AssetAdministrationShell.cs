@@ -25,7 +25,6 @@ namespace SWMS.Influx.Module.BusinessObjects
         [Browsable(false)]
         public abstract string Caption { get; }
 
-        [RuleRequiredField]
         public abstract AssetCategory AssetCategory { get; }
     
         [Aggregated]
