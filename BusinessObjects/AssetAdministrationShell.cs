@@ -25,7 +25,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         [Browsable(false)]
         public abstract string Caption { get; }
 
-        public abstract AssetCategory AssetCategory { get; }
+        public virtual AssetCategory AssetCategory { get; set; }
     
         [Aggregated]
         public IList<InfluxIdentificationInstance> InfluxIdentificationInstances
