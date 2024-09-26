@@ -29,11 +29,11 @@ namespace SWMS.Influx.Module.Controllers
             }
             if (searchedObjects.Count > 0)
             {
-                if (masterListView.ObjectTypeInfo.Name == "AssetAdministrationShell")
-                {
-                    detailListView.CollectionSource.Criteria[CriteriaName] = CriteriaOperator.FromLambda<InfluxMeasurement>(x => searchedObjects.Contains(x.AssetAdministrationShell.ID));
-                }
-                else if (masterListView.ObjectTypeInfo.Name == "InfluxMeasurement")
+                //if (masterListView.ObjectTypeInfo.Name == "AssetAdministrationShell")
+                //{
+                //    detailListView.CollectionSource.Criteria[CriteriaName] = CriteriaOperator.FromLambda<InfluxMeasurement>(x => searchedObjects.Contains(x.AssetAdministrationShell.ID));
+                //}
+                if (masterListView.ObjectTypeInfo.Name == "InfluxMeasurement")
                 {
                     detailListView.CollectionSource.Criteria[CriteriaName] = CriteriaOperator.FromLambda<InfluxField>(x => searchedObjects.Contains(x.InfluxMeasurement.ID));
                 }
@@ -60,7 +60,7 @@ namespace SWMS.Influx.Module.Controllers
             {
                 FilterDetailListView((ListView)InfluxMeasurementViewItem.InnerView, (ListView)InfluxFieldViewItem.InnerView);
             }
-        }        
+        }
 
         protected override void OnActivated()
         {
@@ -130,24 +130,31 @@ namespace SWMS.Influx.Module.Controllers
             ListView influxFieldListView = (ListView)InfluxFieldViewItem.InnerView;
             DetailView influxDatapointListView = (DetailView)InfluxDatapointListViewItem.InnerView;
 
-            List <InfluxDatapoint> datapoints = new();
+            List<InfluxDatapoint> datapoints = new();
 
             influxDatapointListView.CurrentObject = new InfluxDatapointList();
             var influxDatapointList = (InfluxDatapointList)influxDatapointListView.CurrentObject;
 
+            var start = "-3h";
+            var stop = "now()";
+            var fluxRange = new FluxRange(start, stop);
+            var aggregateTime = "1m";
+            var aggregateFunction = FluxAggregateFunction.Mean;
+            var aggregateWindow = new FluxAggregateWindow(aggregateTime, aggregateFunction);
+            // TODO: include data loading from InfluxDB service
+            throw new NotImplementedException();
             foreach (object obj in influxFieldListView.SelectedObjects)
             {
                 InfluxField influxField = (InfluxField)obj;
 
-                var start = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeStart;
-                var stop = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeEnd;
-                var fluxRange = new FluxRange(start, stop);
-                var aggregateTime = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
-                var aggregateFunction = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateFunction;
-                var aggregateWindow = new FluxAggregateWindow(aggregateTime, aggregateFunction);
+                //var start = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeStart;
+                //var stop = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.RangeEnd;
+                //var fluxRange = new FluxRange(start, stop);
+                //var aggregateTime = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateWindow;
+                //var aggregateFunction = influxField.InfluxMeasurement.AssetAdministrationShell.AssetCategory.AggregateFunction;
 
-                await influxField.GetDatapoints(fluxRange, aggregateWindow);
-                datapoints.AddRange(influxField.Datapoints);
+                //await influxField.GetDatapoints(fluxRange, aggregateWindow);
+                //datapoints.AddRange(influxField.Datapoints);
             }
 
             influxDatapointList.Datapoints = new BindingList<InfluxDatapoint>(datapoints);

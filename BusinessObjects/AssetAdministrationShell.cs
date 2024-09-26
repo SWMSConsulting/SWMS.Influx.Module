@@ -1,6 +1,10 @@
-using DevExpress.Data.Helpers;
+using Aqua.EnumerableExtensions;
+using DevExpress.ExpressApp.Blazor.Components;
+using DevExpress.ExpressApp.DC;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
+using DevExpress.Persistent.Validation;
+using SWMS.Influx.Module.Attributes;
 using SWMS.Influx.Module.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -8,112 +12,101 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
-    // Register this entity in your DbContext (usually in the BusinessObjects folder of your project) with the "public DbSet<AssetAdministrationShell> AssetAdministrationShells { get; set; }" syntax.
-    [DefaultClassOptions]
-    //[ImageName("BO_Contact")]
-    [DefaultProperty(nameof(AssetId))]
     [NavigationItem("Influx")]
-    public class AssetAdministrationShell : BaseObject
+    [XafDefaultProperty(nameof(Caption))]
+    public abstract class AssetAdministrationShell : BaseObject
     {
-        public AssetAdministrationShell()
+        public override void OnLoaded()
         {
-
+            UpdateProperties();
+            base.OnLoaded();
         }
 
-        public virtual string AssetId { get; set; }
+        [Browsable(false)]
+        public abstract string Caption { get; }
 
         public virtual AssetCategory AssetCategory { get; set; }
-
-        public virtual IList<InfluxMeasurement> InfluxMeasurements { get; set; } = new ObservableCollection<InfluxMeasurement>();
-
-        public async Task GetMeasurements()
+    
+        [Aggregated]
+        public IList<InfluxIdentificationInstance> InfluxIdentificationInstances
         {
-            if(AssetCategory == null || InfluxMeasurements.Count > 0)
+            get
             {
-                return;
-            }
-
-            string bucket = Environment.GetEnvironmentVariable("INFLUX_BUCKET");
-            var organization = Environment.GetEnvironmentVariable("INFLUX_ORG");
-
-            var results = await InfluxDBService.QueryAsync(async query =>
-            {
-                // List measurements in bucket: https://docs.influxdata.com/influxdb/cloud/query-data/flux/explore-schema/
-                // By default, this function returns results from the last 30 days.
-                var flux = $"import \"influxdata/influxdb/schema\"\n" +
-                            $"schema.measurements(" +
-                            $"bucket: \"{bucket}\"," +
-                            $")";
-                try
+                return AssetCategory?.InfluxIdentificationTemplates.Select(t =>
                 {
-                    var tables = await query.QueryAsync(flux, organization);
-                    return tables.SelectMany(table =>
-                        table.Records.Select(record =>
-                            new InfluxMeasurement
-                            {
-                                Name = record.GetValueByKey("_value").ToString(),
-                                AssetAdministrationShell = this,
-                            }));
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex);
-                    return new ObservableCollection<InfluxMeasurement>();
-                }
-
-            });
-
-            ObservableCollection<InfluxMeasurement> iotMeasurementsWithAssetId = new();
-
-            foreach(var measurement in InfluxMeasurements)
-            {
-                ObjectSpace.Delete(measurement);
-            }
-
-            foreach (var measurement in results)
-            {
-                //Console.WriteLine(measurement.Name);
-                if (AssetCategory == null)
-                {
-                    return;
-                }
-                var isAssetIdInTags = await InfluxDBService.QueryAsync(async query =>
-                {
-                    // List measurements in bucket: https://docs.influxdata.com/influxdb/cloud/query-data/flux/explore-schema/
-                    // By default, this function returns results from the last 30 days.
-                    var flux = $"import \"influxdata/influxdb/schema\"\n" +
-                                $"schema.measurementTagValues(" +
-                                $"bucket: \"{bucket}\"," +
-                                $"tag: \"{AssetCategory.InfluxIdentifier}\"," +
-                                $"measurement: \"{measurement.Name}\"," +
-                                $")";
-                    List<string> tagsInMeasurement = new();
-                    var tables = await query.QueryAsync(flux, organization);
-
-                    tables.ForEach(table =>
+                    return new InfluxIdentificationInstance
                     {
-                        table.Records.ForEach(record =>
-                        {
-                            Console.WriteLine($"{record.GetValueByKey("_value")}");
-                            tagsInMeasurement.Add(record.GetValueByKey("_value").ToString());
-                        });
-                    });
-
-                    return tagsInMeasurement.Contains(AssetId);
-                });
-
-                if (isAssetIdInTags)
-                {
-                    var createdMeasurement = ObjectSpace.CreateObject<InfluxMeasurement>();
-                    createdMeasurement.Name = measurement.Name;
-                    createdMeasurement.AssetAdministrationShell = measurement.AssetAdministrationShell;
-                    await createdMeasurement.GetFields();
-                }
+                        AssetAdministrationShell = this,
+                        InfluxIdentificationTemplate = t,
+                        InfluxTagValues = t.InfluxTagKeyPropertyBindings
+                            .Select(binding => new InfluxTagValue(binding, this))
+                            .ToList()
+                    };
+                }).ToList() ?? new List<InfluxIdentificationInstance>();
             }
-
-            ObjectSpace.CommitChanges();
-
         }
 
+        [NotMapped]
+        public IList<InfluxMeasurement> InfluxMeasurements => AssetCategory?.InfluxMeasurements;
+
+        [NotMapped]
+        public IList<InfluxField> InfluxFields => InfluxMeasurements?.SelectMany(m => m.InfluxFields).ToList();
+
+        public InfluxIdentificationInstance? GetInfluxIdentificationInstanceForMeasurement(string measurement)
+        {
+            return InfluxIdentificationInstances.Where(i => i.InfluxMeasurement?.Identifier == measurement).FirstOrDefault();
+        }
+
+        public InfluxDatapoint? GetLastDatapoint(string measurement, string field)
+        {
+            var identification = GetInfluxIdentificationInstanceForMeasurement(measurement);
+            if (identification == null)
+                return null;
+
+            var influxField = identification?.InfluxMeasurement.InfluxFields.Where(f => f.Identifier == field).FirstOrDefault();
+            if (influxField == null)
+                return null;
+
+            return InfluxDBService.GetLastDatapointForField(influxField, identification);
+        }
+
+
+        public void UpdateProperties()
+        {
+            var properties = this.GetType().GetProperties();
+
+            foreach (var property in properties)
+            {
+                var attribute = Attribute.GetCustomAttribute(property, typeof(LastDatapointAttribute)) as LastDatapointAttribute;
+                if (attribute != null)
+                {
+                    var fields = InfluxFields;
+                    if(attribute.MeasurementIdentifier != null)
+                    {
+                        var measurement = InfluxMeasurements?.FirstOrDefault(x => x.Identifier == attribute.MeasurementIdentifier);
+                        fields = measurement?.InfluxFields;
+                    }
+                    var field = fields?.FirstOrDefault(x => x.Identifier == attribute.FieldIndentifier);
+                    var identification = InfluxIdentificationInstances?.FirstOrDefault(x => x.InfluxMeasurement == field?.InfluxMeasurement);
+                    if (field == null || identification == null)
+                    {
+                        property.SetValue(this, null);
+                        Console.WriteLine($"Last Datapoint: Could not find field {attribute.FieldIndentifier} for measurement {attribute.MeasurementIdentifier}");
+                        continue;
+                    }
+
+                    var lastDatapoint = InfluxDBService.GetLastDatapointForField(field, identification);
+
+                    if (property.PropertyType.IsAssignableFrom(typeof(DateTime?)))
+                    {
+                        property.SetValue(this, lastDatapoint?.Time);
+                    }
+                    else
+                    {
+                        property.SetValue(this, lastDatapoint?.Value);
+                    }
+                }
+            }
+        }
     }
 }

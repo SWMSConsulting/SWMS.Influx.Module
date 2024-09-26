@@ -1,136 +1,66 @@
-﻿using DevExpress.ExpressApp;
-using DevExpress.ExpressApp.DC;
+﻿using DevExpress.ExpressApp.DC;
 using DevExpress.ExpressApp.Model;
 using DevExpress.Persistent.Base;
+using DevExpress.Persistent.BaseImpl.EF;
 using SWMS.Influx.Module.Services;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
     [DomainComponent]
     [DefaultClassOptions]
     [NavigationItem("Influx")]
-    //[ImageName("BO_Unknown")]
-    //[DefaultProperty("SampleProperty")]
-    //[DefaultListViewOptions(MasterDetailMode.ListViewOnly, false, NewItemRowPosition.None)]
-    // Specify more UI options using a declarative approach (https://documentation.devexpress.com/#eXpressAppFramework/CustomDocument112701).
-    public class InfluxDatapoint : IXafEntityObject/*, IObjectSpaceLink*/, INotifyPropertyChanged
+    [ImageName("ChartType_Line")]
+    public class InfluxDatapoint : BaseObject
     {
-        //private IObjectSpace objectSpace;
-        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        public InfluxDatapoint(DateTime time, object value)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            Time = time;
+            StringValue = value.ToString();
+            try
+            {
+                Value = Convert.ToDouble(value);
+            }
+            catch { }
         }
-        public InfluxDatapoint()
-        {
-            Oid = Guid.NewGuid();
-        }
 
-        [DevExpress.ExpressApp.Data.Key]
-        [Browsable(false)]  // Hide the entity identifier from UI.
-        public Guid Oid { get; set; }
-
-        //private string sampleProperty;
-        //[XafDisplayName("My display name"), ToolTip("My hint message")]
-        //[ModelDefault("EditMask", "(000)-00"), VisibleInListView(false)]
-        //[RuleRequiredField(DefaultContexts.Save)]
-        //public string SampleProperty
-        //{
-        //    get { return sampleProperty; }
-        //    set
-        //    {
-        //        if (sampleProperty != value)
-        //        {
-        //            sampleProperty = value;
-        //            OnPropertyChanged();
-        //        }
-        //    }
-        //}
-
-        //[Action(Caption = "My UI Action", ConfirmationMessage = "Are you sure?", ImageName = "Attention", AutoCommit = true)]
-        //public void ActionMethod() {
-        //    // Trigger custom business logic for the current record in the UI (https://documentation.devexpress.com/eXpressAppFramework/CustomDocument112619.aspx).
-        //    this.SampleProperty = "Paid";
-        //}
-
-        private DateTime _Time;
         [ModelDefault("DisplayFormat", "{0:dd.MM.yyyy HH:mm:ss}")]
-        public DateTime Time
-        {
-            get { return _Time; }
-            set
-            {
-                if (_Time != value)
-                {
-                    _Time = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
+        public DateTime Time { get; set; }
 
-        private double _Value;
-        public double Value
-        {
-            get { return _Value; }
-            set
-            {
-                if (_Value != value)
-                {
-                    _Value = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
+        public double? Value { get; set; }
 
-        private InfluxField _InfluxField;
+        public string StringValue { get; set; }
+
         [ExpandObjectMembers(ExpandObjectMembers.InListView)]
-        public InfluxField InfluxField
+        public InfluxField InfluxField { get; set; }
+
+        public BindingList<InfluxTagValue> InfluxTagValues { get; set; } = new BindingList<InfluxTagValue>();
+
+        public InfluxMeasurement InfluxMeasurement => InfluxField?.InfluxMeasurement;
+
+        public string TagSetString => InfluxDBService.GetTagSetString(InfluxTagValues);
+
+        public string InfluxMetaData
         {
-            get { return _InfluxField; }
-            set
+            get
             {
-                if (_InfluxField != value)
-                {
-                    _InfluxField = value;
-                    OnPropertyChanged();
-                }
+                var measurement = InfluxField.InfluxMeasurement.DisplayName;
+                var field = InfluxField.DisplayName;
+                return $"{field} ({measurement}): {TagSetString}";
             }
         }
 
-        public override string ToString()
+        public string LineProtocol
         {
-            return $"{InfluxDBService.GetFieldIdentifier(InfluxField)}: {Time.ToLocalTime()} - {Value}";
+            get
+            {
+                // Example lineprotocol: measurement,tag1=val1,tag2=val2 field1="v1",field2=1i 0000000000000000000
+                var measurement = InfluxField.InfluxMeasurement.Identifier;
+                var tagSetString = TagSetString;
+                var fieldSetString = $"{InfluxField.DisplayName}={Value}";
+                var timeStamp = ((DateTimeOffset)Time).ToUnixTimeSeconds();
+                return $"{measurement},{tagSetString} {fieldSetString} {timeStamp}";
+            }
         }
-
-        #region IXafEntityObject members (see https://documentation.devexpress.com/eXpressAppFramework/clsDevExpressExpressAppIXafEntityObjecttopic.aspx)
-        void IXafEntityObject.OnCreated()
-        {
-            // Place the entity initialization code here.
-            // You can initialize reference properties using Object Space methods; e.g.:
-            // this.Address = objectSpace.CreateObject<Address>();
-        }
-        void IXafEntityObject.OnLoaded()
-        {
-            // Place the code that is executed each time the entity is loaded here.
-        }
-        void IXafEntityObject.OnSaving()
-        {
-            // Place the code that is executed each time the entity is saved here.
-        }
-        #endregion
-
-        #region IObjectSpaceLink members (see https://documentation.devexpress.com/eXpressAppFramework/clsDevExpressExpressAppIObjectSpaceLinktopic.aspx)
-        // If you implement this interface, handle the NonPersistentObjectSpace.ObjectGetting event and find or create a copy of the source object in the current Object Space.
-        // Use the Object Space to access other entities (see https://documentation.devexpress.com/eXpressAppFramework/CustomDocument113707.aspx).
-        //IObjectSpace IObjectSpaceLink.ObjectSpace {
-        //    get { return objectSpace; }
-        //    set { objectSpace = value; }
-        //}
-        #endregion
-
-        #region INotifyPropertyChanged members (see http://msdn.microsoft.com/en-us/library/system.componentmodel.inotifypropertychanged(v=vs.110).aspx)
-        public event PropertyChangedEventHandler PropertyChanged;
-        #endregion
     }
 }

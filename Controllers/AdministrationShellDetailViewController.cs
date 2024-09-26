@@ -12,6 +12,7 @@ namespace SWMS.Influx.Module.Controllers
             TargetViewType = ViewType.DetailView;
             TargetObjectType = typeof(AssetAdministrationShell);
 
+            /*
             SimpleAction mySimpleAction = new SimpleAction(this, "GetMeasurementsAction", PredefinedCategory.View)
             {
                 Caption = "Refresh Measurements",
@@ -19,11 +20,12 @@ namespace SWMS.Influx.Module.Controllers
                 ImageName = "Action_Refresh"
             };
             mySimpleAction.Execute += GetMeasurementsAction;
+            */
         }
         private async void GetMeasurementsAction(object sender, SimpleActionExecuteEventArgs e)
         {
             AssetAdministrationShell currentObject = View.CurrentObject as AssetAdministrationShell;
-            await currentObject.GetMeasurements();
+            //await currentObject.GetMeasurements();
         }
 
         protected override void OnActivated()
@@ -35,12 +37,12 @@ namespace SWMS.Influx.Module.Controllers
         {
             base.OnViewControlsCreated();
             // Access and customize the target View control.
-            var currentObject = View.CurrentObject as AssetAdministrationShell;
-            if (currentObject.InfluxMeasurements.Count > 0)
-            {
-                return;
-            }
-            await currentObject.GetMeasurements();
+            //var currentObject = View.CurrentObject as AssetAdministrationShell;
+            //if (currentObject.InfluxMeasurements.Count > 0)
+            //{
+            //    return;
+            //}
+            //await currentObject.GetMeasurements();
         }
         protected override void OnDeactivated()
         {

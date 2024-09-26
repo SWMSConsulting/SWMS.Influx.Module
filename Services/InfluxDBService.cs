@@ -1,118 +1,264 @@
-﻿using DevExpress.ExpressApp;
+﻿using DevExpress.ExpressApp.Core;
 using InfluxDB.Client;
 using InfluxDB.Client.Core.Flux.Domain;
+using Microsoft.Extensions.DependencyInjection;
 using SWMS.Influx.Module.BusinessObjects;
 using SWMS.Influx.Module.Models;
-using System.Text.RegularExpressions;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Timers;
 
-namespace SWMS.Influx.Module.Services
+namespace SWMS.Influx.Module.Services;
+
+public class InfluxDBService
 {
-    public class InfluxDBService
+    private readonly static string _url = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_URL");
+    private readonly static string _token = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_TOKEN");
+    private readonly static string _bucket = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_BUCKET");
+    
+    public readonly static string Organization = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_ORG");
+    
+    private readonly static InfluxDBClientOptions _clientOptions = new InfluxDBClientOptions.Builder()
+        .Url(_url)
+        .AuthenticateToken(_token)
+        .TimeOut(TimeSpan.FromMinutes(5))
+        .Build();
+
+    private readonly static InfluxDBClient _client = new InfluxDBClient(_clientOptions);
+    private readonly static WriteApi _writeApi = _client.GetWriteApi();
+    private readonly static QueryApi _queryApi = _client.GetQueryApi();
+    private static Dictionary<string, InfluxDatapoint> LastDatapoints { get; set; } = new Dictionary<string, InfluxDatapoint>();
+    
+    private static IServiceScopeFactory _serviceScopeFactory;
+
+    public InfluxDBService(IServiceScopeFactory serviceScopeFactory)
     {
-        private readonly static string _url = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_URL");
-        private readonly static string _token = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_TOKEN");
-        private readonly static string _organization = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_ORG");
-        private readonly static string _bucket = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_BUCKET");
-        private readonly static InfluxDBClient _client = new InfluxDBClient(_url, _token);
-        private readonly static WriteApi _writeApi = _client.GetWriteApi();
-        private readonly static QueryApi _queryApi = _client.GetQueryApi();
+        _serviceScopeFactory = serviceScopeFactory;
 
-        internal static IObjectSpace _objectSpace;
-        public static Dictionary<string, InfluxDatapoint> LastDatapoints { get; private set; } = new Dictionary<string, InfluxDatapoint>();
+        InitializeInfluxSchema();
+        SetupBackgroundWorker();
+    }
 
-        public static void SetupObjectSpace(IObjectSpace objectSpace)
+    private static async void InitializeInfluxSchema()
+    {
+        await QueryInfluxMeasurements();
+        await RefreshLastDatapoints();
+    }
+
+
+    #region Query Measurements
+    public static async Task<IEnumerable<InfluxMeasurement>> QueryInfluxMeasurements()
+    {
+        var results = await QueryAsync(async query =>
         {
-            _objectSpace = objectSpace;
+            var flux = FluxService.GetFluxQueryForMeasurements(_bucket);
+            try
+            {
+                var tables = await query.QueryAsync(flux, Organization);
+                return tables.SelectMany(table =>
+                    table.Records.Select(record =>
+                        new InfluxMeasurement
+                        {
+                            Identifier = record.GetValueByKey("_value").ToString(),
+                            DisplayName = record.GetValueByKey("_value").ToString(),
+                        }));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return new ObservableCollection<InfluxMeasurement>();
+            }
+        });
+
+        using (var scope = _serviceScopeFactory.CreateScope())
+        {
+            var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+            
+            var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+
+            var allMeasurements = objectSpace.GetObjects<InfluxMeasurement>();
+
+            foreach (var measurement in results)
+            {
+                var existingMeasurement = allMeasurements.FirstOrDefault(x => x.Identifier == measurement.Identifier);
+                if (existingMeasurement == null)
+                {
+                    existingMeasurement = objectSpace.CreateObject<InfluxMeasurement>();
+                    existingMeasurement.Identifier = measurement.Identifier;
+                    existingMeasurement.DisplayName = measurement.DisplayName;
+                }
+
+                await existingMeasurement.GetFields();
+                await existingMeasurement.GetTagKeys();
+            }
+
+            objectSpace.CommitChanges();
+
+            var updatedMeasurements = objectSpace.GetObjects<InfluxMeasurement>();
+            return updatedMeasurements;
+        }
+    }
+    #endregion
+
+    #region Query Fields
+    public static async Task<IEnumerable<InfluxField>> GetInfluxFieldsForMeasurement(string measurement)
+    {
+        return await QueryAsync(async query =>
+        {
+            var flux = FluxService.GetFluxQueryForFields(_bucket, measurement);
+
+            var tables = await query.QueryAsync(flux, Organization);
+
+            return tables.SelectMany(table =>
+                table.Records.Select(record =>
+                    new InfluxField
+                    {
+                        Identifier = record.GetValueByKey("_value").ToString(),
+                        DisplayName = record.GetValueByKey("_value").ToString()
+                    }
+                )
+            );
+        });
+    }
+    #endregion
+
+    #region Query TagKeys
+    public static async Task<IEnumerable<InfluxTagKey>> GetInfluxTagKeysForMeasurement(string measurement)
+    {
+        return await QueryAsync(async query =>
+        {
+            var flux = FluxService.GetFluxQueryForTagKeys(_bucket, measurement);
+
+            var tables = await query.QueryAsync(flux, Organization);
+
+            return tables.SelectMany(table =>
+                table.Records.Select(record =>
+                    new InfluxTagKey
+                    {
+                        Identifier = record.GetValueByKey("_value").ToString()
+                    }
+                )
+            );
+        });
+    }
+    #endregion
+
+    #region Query Last Datapoints
+    public static InfluxDatapoint GetLastDatapointForField(InfluxField field, InfluxIdentificationInstance identification)
+    {
+        var identifier = GetFieldIdentifier(field, identification);
+        return LastDatapoints.GetValueOrDefault(identifier);
+    }
+
+    public static async Task RefreshLastDatapoints()
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+        var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+        var measurements = objectSpace.GetObjects<InfluxMeasurement>().Where(m => m.IsInUse).ToList();
+
+        if (measurements.Count == 0)
+        {
+            Console.WriteLine("No relevant measurements found");
+            return;
         }
 
-        public static void Write(Action<WriteApi> action)
-        {
-            action(_writeApi);
-        }
+        var datapoints = await QueryLastDatapoints("-30d", measurements);
+        // InfluxField.ID would also be possible as key, but is less readable
+        LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField, x.InfluxTagValues), x => x);
+        Console.WriteLine($"Last Datapoints refreshed: {LastDatapoints.Count}");
+    }
 
-        public static async Task<T> QueryAsync<T>(Func<QueryApi, Task<T>> action)
-        {
-            return await action(_queryApi);
-        }
+    private static CancellationTokenSource cancellationTokenSourceLastDp = new CancellationTokenSource();
 
-        public static async Task<List<FluxTable>> QueryAsync(string flux)
-        {
-            return await _queryApi.QueryAsync(flux, _organization);
-        }
+    private static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration, IList<InfluxMeasurement> measurements)
+    {
+        cancellationTokenSourceLastDp.Cancel();
+        cancellationTokenSourceLastDp = new CancellationTokenSource();
 
-        public static async Task SetLastDatapoints()
-        {
-            var datapoints = await QueryLastDatapoints("-24h");
-            // InfluxField.ID would also be possible as key, but is less readable
-            LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField), x => x);
-        }
+        var fluxRange = new FluxRange(fluxDuration, FluxRange.Now);
+        return await QueryInfluxDatapoints(
+            fluxRange: fluxRange,
+            influxMeasurements: measurements,
+            pipe: FluxQueryPipe.Last,
+            cancellationToken: cancellationTokenSourceLastDp.Token
+        );
+    }
+    #endregion
 
-        public static InfluxDatapoint GetLastDatapointForField(InfluxField field)
-        {
-            return LastDatapoints.GetValueOrDefault(GetFieldIdentifier(field));
-        }
-        public static InfluxDatapoint GetLastDatapointForField(string assetId, string measurementName, string fieldName)
-        {
-            var fieldIdentifier = GetFieldIdentifier(assetId, measurementName, fieldName);
-            return LastDatapoints.GetValueOrDefault(fieldIdentifier);
-        }
+    #region Query Datapoints
+    private static CancellationTokenSource cancellationTokenSourceQueryDp = new CancellationTokenSource();
+    public static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
+        FluxRange fluxRange,
+        FluxAggregateWindow? aggregateWindow = null,
+        IEnumerable<InfluxField>? influxFields = null,
+        IEnumerable<InfluxMeasurement>? influxMeasurements = null,
+        IEnumerable<InfluxIdentificationInstance>? influxIdentificationInstances = null,
+        FluxQueryPipe? pipe = null
+        )
+    {
+        cancellationTokenSourceQueryDp.Cancel();
+        cancellationTokenSourceQueryDp = new CancellationTokenSource();
+        return await QueryInfluxDatapoints(
+            fluxRange: fluxRange,
+            aggregateWindow: aggregateWindow,
+            influxFields: influxFields,
+            influxMeasurements: influxMeasurements,
+            influxIdentificationInstances: influxIdentificationInstances,
+            pipe: pipe,
+            cancellationToken: cancellationTokenSourceQueryDp.Token
+        );
+    }
 
-        public static string GetFieldIdentifier(InfluxField field)
-        {
-            return GetFieldIdentifier(
-                field.InfluxMeasurement.AssetAdministrationShell.AssetId,
-                field.InfluxMeasurement.Name,
-                field.Name
-                );
-        }
-        public static string GetFieldIdentifier(string assetId, string measurementName, string fieldName)
-        {
-            return $"{assetId} - {measurementName} - {fieldName}";
-        }
+    private static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
+        FluxRange fluxRange,
+        FluxAggregateWindow? aggregateWindow = null,
+        IEnumerable<InfluxField>? influxFields = null,
+        IEnumerable<InfluxMeasurement>? influxMeasurements = null,
+        IEnumerable<InfluxIdentificationInstance>? influxIdentificationInstances = null,
+        FluxQueryPipe? pipe = null,
+        CancellationToken cancellationToken = default
+        )
+    {
+        string query = new FluxQueryBuilder()
+            .AddBucket(_bucket)
+            .AddRange(fluxRange)
+            .AddAggregation(aggregateWindow)
+            .AddMeasurementFilter(influxMeasurements?.Distinct())
+            .AddFieldFilter(influxFields?.Distinct())
+            .AddTagFilter(influxIdentificationInstances)
+            .AddPipe(pipe)
+            .Build();
+        Console.WriteLine(query);
 
-        public static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration)
+        try
         {
-            var fluxRange = new FluxRange(fluxDuration, "now()");
-            var datapoints = await QueryInfluxDatapoints(
-                fluxRange: fluxRange,
-                pipe: "|> last()"
-                );
-            return datapoints;
-        }
-
-        public static async Task<List<InfluxDatapoint>> QueryInfluxDatapoints(
-            FluxRange fluxRange,
-            FluxAggregateWindow? aggregateWindow = null,
-            Dictionary<string, List<string>>? filters = null,
-            string? pipe = ""
-            )
-        {
-            var flux = GetFluxQuery(fluxRange, aggregateWindow, filters, pipe);
-            //Console.WriteLine(flux);
-            var tables = await _queryApi.QueryAsync(flux, _organization);
+            var tables = await _queryApi.QueryAsync(query, Organization, cancellationToken);
             return FluxTablesToInfluxDatapoints(tables);
         }
-
-        public static bool FluxRecordIsInfluxField(InfluxField field, FluxRecord record)
+        catch (OperationCanceledException ex)
         {
-            if(field == null || record == null)
-            {
-                return false;
-            }
-            var measurementName = record.GetMeasurement();
-            var fieldName = record.GetField();
-            var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
-            var assetId = field.InfluxMeasurement.AssetAdministrationShell.AssetId;
-            var recordIsCurrentField = field.Name == fieldName &&
-                field.InfluxMeasurement.Name == measurementName &&
-                record.GetValueByKey(influxIdentifier).ToString() == assetId;
-            return recordIsCurrentField;
+            Console.WriteLine("Operation Canceled");
+            Console.WriteLine(ex.Message);
+            return new List<InfluxDatapoint>();
         }
-
-        public static List<InfluxDatapoint> FluxTablesToInfluxDatapoints(List<FluxTable> tables)
+        catch (Exception ex)
         {
-            // TODO: optimize by keeping local List / HashSet of InfluxFields instead of loading from ObjectSpace
-            var influxFields = _objectSpace.GetObjects<InfluxField>();
+            Console.WriteLine(ex.ToString());
+            return new List<InfluxDatapoint>();
+        }
+    }
+
+    public static List<InfluxDatapoint> FluxTablesToInfluxDatapoints(List<FluxTable> tables)
+    {
+        // TODO: optimize by keeping local List / HashSet of InfluxFields instead of loading from ObjectSpace
+
+        using var scope = _serviceScopeFactory.CreateScope();
+            var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+            var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+            var influxFields = objectSpace.GetObjects<InfluxField>();
+            var influxTagKeys = objectSpace.GetObjects<InfluxTagKey>();
+            
             List<InfluxDatapoint> datapoints = new();
             tables.ForEach(table =>
             {
@@ -127,140 +273,164 @@ namespace SWMS.Influx.Module.Services
                     {
                         currentField = influxFields.FirstOrDefault(x => FluxRecordIsInfluxField(x, record));
                     }
-                    if(currentField == null)
+                    if (currentField == null)
                     {
                         return;
                     }
 
-                    InfluxDatapoint datapoint = new InfluxDatapoint()
+                    var tagList = new BindingList<InfluxTagValue>();
+
+                    var recordTags = record.Values.Where(x => !x.Key.StartsWith("_") && x.Key != "result" && x.Key != "table").OrderBy(x => x.Key).ToList();
+
+                    foreach (var tag in recordTags)
                     {
-                        Value = (double)record.GetValue(),
-                        Time = (DateTime)record.GetTimeInDateTime(),
-                        InfluxField = currentField,
-                    };
+                        var influxTagKey = influxTagKeys.FirstOrDefault(x => x.Identifier == tag.Key && x.InfluxMeasurement.Identifier == record.GetMeasurement());
+                        if (influxTagKey == null)
+                        {
+                            return;
+                        }
+                        tagList.Add(new InfluxTagValue(influxTagKey, tag.Value.ToString()));
+                    }
+
+                    InfluxDatapoint datapoint = new InfluxDatapoint((DateTime)record.GetTimeInDateTime(), record.GetValue());
+                    datapoint.InfluxField = currentField;
+                    datapoint.InfluxTagValues = tagList;
                     datapoints.Add(datapoint);
                 });
             });
             return datapoints;
         }
-
-        public static string FluxDurationRegexPattern = @"^(\d+w)?(\d+d)?(\d+h)?(\d+m)?(\d+s)?(\d+ms)?$";
-
-        public static bool IsValidFluxDuration(string duration)
+    public static bool FluxRecordIsInfluxField(InfluxField field, FluxRecord record)
+    {
+        if (field == null || record == null)
         {
-            if (string.IsNullOrWhiteSpace(duration))
-            {
-                return false;
-            }
-
-            Regex regex = new Regex(FluxDurationRegexPattern);
-            return regex.IsMatch(duration);
+            return false;
         }
-
-        public static string CalculateFluxDuration(InfluxTimeWindow influxTimeWindow, int pointNumber = 360)
-        {
-            return CalculateFluxDuration(influxTimeWindow.StartDate, influxTimeWindow.EndDate, pointNumber);
-        }
-
-        public static string CalculateFluxDuration(DateTime StartDate, DateTime EndDate, int pointNumber = 360)
-        {
-            if (StartDate >= EndDate)
-            {
-                throw new ArgumentException("The StartDate must be before the EndDate.");
-            }
-            var timeSpan = EndDate - StartDate;
-            var milliseconds = timeSpan.TotalMilliseconds;
-            var aggregateTime = milliseconds / pointNumber;
-            return MillisecondsToFluxDuration(aggregateTime);
-        }
-
-        public static string MillisecondsToFluxDuration(double milliseconds)
-        {
-            if (milliseconds <= 0)
-            {
-                throw new ArgumentException("The number of seconds must be positive.");
-            }
-
-            TimeSpan timeSpan = TimeSpan.FromMilliseconds(milliseconds);
-
-            return TimeSpanToFluxDuration(timeSpan);
-        }
-
-        public static string TimeSpanToFluxDuration(TimeSpan timeSpan)
-        {
-            int weeks = (int)(timeSpan.TotalDays / 7);
-            int days = timeSpan.Days % 7;
-            int hours = timeSpan.Hours;
-            int minutes = timeSpan.Minutes;
-            int seconds = timeSpan.Seconds;
-            int milliseconds = timeSpan.Milliseconds;
-
-            string result = "";
-
-            if (weeks > 0)
-            {
-                result += $"{weeks}w";
-            }
-            if (days > 0)
-            {
-                result += $"{days}d";
-            }
-            if (hours > 0)
-            {
-                result += $"{hours}h";
-            }
-            if (minutes > 0)
-            {
-                result += $"{minutes}m";
-            }
-            if (seconds > 0)
-            {
-                result += $"{seconds}s";
-            }
-            if (milliseconds > 0)
-            {
-                result += $"{milliseconds}ms";
-            }
-
-            return result;
-        }
-
-        public static string GetFluxQuery(
-            FluxRange fluxRange,
-            FluxAggregateWindow? aggregateWindow = null,
-            Dictionary<string, List<string>>? filters = null,
-            string? pipe = ""
-        )
-        {
-            filters ??= new Dictionary<string, List<string>>();
-            List<string> tagFluxFilters = new List<string>();
-            foreach ( var kvp in filters )
-            {
-                var arrowFunctionParts = new List<string>();
-                foreach ( var value in kvp.Value)
-                {
-                    var arrowFunctionPart = $"r[\"{kvp.Key}\"] == \"{value}\"";
-                    arrowFunctionParts.Add( arrowFunctionPart );
-                }
-                var arrowFunction = String.Join(" or ", arrowFunctionParts);
-                var tagFluxFilter = $"|> filter(fn: (r) => {arrowFunction})";
-                tagFluxFilters.Add( tagFluxFilter );
-            }
-            var fluxFilterString = String.Join("\n", tagFluxFilters);
-
-            var aggregateWindowString = "";
-            if( aggregateWindow != null)
-            {
-                aggregateWindowString = $"|> aggregateWindow(every: {aggregateWindow.Every}, fn: {aggregateWindow.Fn.ToString().ToLower()})";
-            }
-
-            string query = $"from(bucket:\"{_bucket}\") " +
-                $"|> range(start: {fluxRange.Start}, stop: {fluxRange.Stop}) " +
-                fluxFilterString +
-                aggregateWindowString +
-                pipe;
-            return query;
-        }
-
+        var measurementName = record.GetMeasurement();
+        var fieldIdentifier = record.GetField();
+        //var influxIdentifier = field.InfluxMeasurement.AssetAdministrationShell.AssetCategory.InfluxIdentifier;
+        //var assetId = field.InfluxMeasurement.AssetAdministrationShell.AssetId;
+        var recordIsCurrentField = field.Identifier == fieldIdentifier &&
+            field.InfluxMeasurement.Identifier == measurementName;
+        //record.GetValueByKey(influxIdentifier).ToString() == assetId;
+        return recordIsCurrentField;
     }
+    #endregion
+
+    #region Helper Functions
+    private static string GetFieldIdentifier(InfluxField field, InfluxIdentificationInstance identification)
+    {
+        return GetFieldIdentifier(field, identification.InfluxTagValues);
+    }
+
+    private static string GetFieldIdentifier(InfluxField field, IList<InfluxTagValue> influxTagValues)
+    {
+        return $"{field.InfluxMeasurement.Identifier}_{field.Identifier}_{GetTagSetString(influxTagValues)}";
+    }
+
+    public static string GetTagSetString(IList<InfluxTagValue> influxTagValues)
+    {
+        var orderedInfluxTagValues = influxTagValues.OrderBy(x => x.InfluxTagKey?.Identifier);
+        return String.Join(",", orderedInfluxTagValues.Select(x => x.ToString()));
+    }
+
+    public static string KeyValuePairToString(string key, string value)
+    {
+        return $"{key}={value}";
+    }
+    #endregion
+
+    #region Influx API
+    public static void Write(Action<WriteApi> action)
+    {
+        action(_writeApi);
+    }
+
+    public static async Task<T> QueryAsync<T>(Func<QueryApi, Task<T>> action)
+    {
+        return await action(_queryApi);
+    }
+
+    public static async Task<List<FluxTable>> QueryAsync(string flux)
+    {
+        return await _queryApi.QueryAsync(flux, Organization);
+    }
+    #endregion
+
+    #region Background Worker
+    private BackgroundWorker worker;
+    private void SetupBackgroundWorker()
+    {
+        var refreshRate = Environment.GetEnvironmentVariable("LAST_DATAPOINTS_REFRESH_RATE");
+
+        if (!double.TryParse(refreshRate, out double rate))
+            return;
+
+        Console.WriteLine($"Setting up Background Worker with refresh rate of {rate}s");
+
+        worker = new BackgroundWorker()
+        {
+            WorkerSupportsCancellation = true,
+                WorkerReportsProgress = true
+        };
+        worker.DoWork += worker_DoWork;
+        worker.ProgressChanged += worker_ProgressChanged;
+        worker.RunWorkerCompleted += worker_RunWorkerCompleted;
+
+        var timer = new System.Timers.Timer(TimeSpan.FromSeconds(rate));
+        timer.Elapsed += timer_Elapsed;
+        timer.Start();
+    }
+
+    void timer_Elapsed(object sender, ElapsedEventArgs e)
+    {
+        if (!worker.IsBusy)
+            worker.RunWorkerAsync();
+    }
+
+    async void worker_DoWork(object sender, DoWorkEventArgs e)
+    {
+        BackgroundWorker w = (BackgroundWorker)sender;
+
+        await RefreshLastDatapoints();
+        /*
+        while (condition)
+        {
+            //check if cancellation was requested
+            if (w.CancellationPending)
+            {
+                //take any necessary action upon cancelling (rollback, etc.)
+
+                //notify the RunWorkerCompleted event handler
+                //that the operation was cancelled
+                e.Cancel = true;
+                return;
+            }
+
+            //report progress; this method has an overload which can also take
+            //custom object (usually representing state) as an argument
+            w.ReportProgress(percentage);
+
+            //do whatever You want the background thread to do...
+        }
+        */
+    }
+
+    private void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+    {
+        //display the progress using e.ProgressPercentage and/or e.UserState
+    }
+
+    private void worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+    {
+        if (e.Cancelled)
+        {
+            //do something
+        }
+        else
+        {
+            //do something else
+        }
+    }
+    #endregion
 }
