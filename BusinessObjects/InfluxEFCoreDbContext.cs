@@ -78,5 +78,7 @@ public class InfluxEFCoreDbContext : DbContext {
             .Entity<PredefinedQuerySettings>()
             .Property(d => d.AggregateFunction)
             .HasConversion<string>();
+
+        modelBuilder.Entity<FixModelEditor>();
     }
 }
