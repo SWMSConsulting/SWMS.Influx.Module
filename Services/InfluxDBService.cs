@@ -1,4 +1,5 @@
-﻿using DevExpress.ExpressApp.Core;
+﻿using DevExpress.ExpressApp;
+using DevExpress.ExpressApp.Core;
 using InfluxDB.Client;
 using InfluxDB.Client.Core.Flux.Domain;
 using Microsoft.Extensions.DependencyInjection;
