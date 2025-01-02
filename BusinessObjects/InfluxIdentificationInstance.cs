@@ -1,28 +1,24 @@
+using DevExpress.ExpressApp;
+using DevExpress.ExpressApp.DC;
 using DevExpress.Persistent.Base;
-using DevExpress.Persistent.BaseImpl.EF;
 using SWMS.Influx.Module.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SWMS.Influx.Module.BusinessObjects
 {
-    [DefaultClassOptions]
     [NavigationItem("Influx")]
     [ImageName("ChartType_Line")]
-    public class InfluxIdentificationInstance : BaseObject
+    [NotMapped, DomainComponent]
+    public class InfluxIdentificationInstance: NonPersistentBaseObject
     {
-        public virtual AssetAdministrationShell AssetAdministrationShell { get; set; }
-        public virtual InfluxIdentificationTemplate InfluxIdentificationTemplate { get; set; }
+        public AssetAdministrationShell AssetAdministrationShell { get; set; }
+        public InfluxIdentificationTemplate InfluxIdentificationTemplate { get; set; }
 
-        public virtual IList<InfluxTagValue> InfluxTagValues { get; set; } = new ObservableCollection<InfluxTagValue>();
+        public IList<InfluxTagValue> InfluxTagValues { get; set; } = new ObservableCollection<InfluxTagValue>();
 
-        [NotMapped]
         public InfluxMeasurement InfluxMeasurement => InfluxIdentificationTemplate?.InfluxMeasurement;
 
-        [NotMapped]
         public string TagSetString => InfluxDBService.GetTagSetString(InfluxTagValues);
-        
-        [NotMapped]
-        public List<KeyValuePair<string, object>> TagKeyValuePairs => InfluxTagValues.Select(x => x.KeyValuePair).ToList();
     }
 }

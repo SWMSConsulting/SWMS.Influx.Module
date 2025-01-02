@@ -25,11 +25,26 @@ namespace SWMS.Influx.Module.BusinessObjects
         [Browsable(false)]
         public abstract string Caption { get; }
 
-        [RuleRequiredField]
         public virtual AssetCategory AssetCategory { get; set; }
     
         [Aggregated]
-        public virtual IList<InfluxIdentificationInstance> InfluxIdentificationInstances { get; set; } = new ObservableCollection<InfluxIdentificationInstance>();
+        public IList<InfluxIdentificationInstance> InfluxIdentificationInstances
+        {
+            get
+            {
+                return AssetCategory?.InfluxIdentificationTemplates.Select(t =>
+                {
+                    return new InfluxIdentificationInstance
+                    {
+                        AssetAdministrationShell = this,
+                        InfluxIdentificationTemplate = t,
+                        InfluxTagValues = t.InfluxTagKeyPropertyBindings
+                            .Select(binding => new InfluxTagValue(binding, this))
+                            .ToList()
+                    };
+                }).ToList() ?? new List<InfluxIdentificationInstance>();
+            }
+        }
 
         [NotMapped]
         public IList<InfluxMeasurement> InfluxMeasurements => AssetCategory?.InfluxMeasurements;
@@ -55,42 +70,6 @@ namespace SWMS.Influx.Module.BusinessObjects
             return InfluxDBService.GetLastDatapointForField(influxField, identification);
         }
 
-        public void UpdateIdentificationInstances()
-        {
-            AssetCategory?.InfluxIdentificationTemplates.ForEach(template =>
-            {
-                var instance = InfluxIdentificationInstances.FirstOrDefault(i => i.InfluxIdentificationTemplate == template);
-                if (instance == null)
-                {
-                    instance = ObjectSpace.CreateObject<InfluxIdentificationInstance>();
-                    instance.AssetAdministrationShell = this;
-                    instance.InfluxIdentificationTemplate = template;
-                    InfluxIdentificationInstances.Add(instance);
-                }
-                template.InfluxTagKeyPropertyBindings.ForEach(binding =>
-                {
-                    var tagValue = instance.InfluxTagValues.FirstOrDefault(v => v.InfluxTagKey == binding.InfluxTagKey);
-                    if (tagValue == null)
-                    {
-                        tagValue = ObjectSpace.CreateObject<InfluxTagValue>();
-                        tagValue.InfluxTagKey = binding.InfluxTagKey;
-                        instance.InfluxTagValues.Add(tagValue);
-                        binding.InfluxTagKey.InfluxTagValues.Add(tagValue);
-                    }
-                    var influxTagValue = new InfluxTagValue(binding, this);
-                    tagValue.Value = influxTagValue.Value;
-                });
-            });
-
-            var unusedInstances = InfluxIdentificationInstances.Where(i => !AssetCategory.InfluxIdentificationTemplates.Contains(i.InfluxIdentificationTemplate)).ToList();
-            unusedInstances.ForEach(InfluxIdentificationInstances.Remove);
-        }
-
-        public override void OnSaving()
-        {
-            base.OnSaving();
-            UpdateIdentificationInstances();
-        }
 
         public void UpdateProperties()
         {
@@ -116,7 +95,16 @@ namespace SWMS.Influx.Module.BusinessObjects
                         continue;
                     }
 
-                    property.SetValue(this, InfluxDBService.GetLastDatapointForField(field, identification)?.Value);
+                    var lastDatapoint = InfluxDBService.GetLastDatapointForField(field, identification);
+
+                    if (property.PropertyType.IsAssignableFrom(typeof(DateTime?)))
+                    {
+                        property.SetValue(this, lastDatapoint?.Time);
+                    }
+                    else
+                    {
+                        property.SetValue(this, lastDatapoint?.Value);
+                    }
                 }
 
                 var cqaAttribute = Attribute.GetCustomAttribute(property, typeof(CachedQueryAttribute)) as CachedQueryAttribute;

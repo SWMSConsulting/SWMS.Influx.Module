@@ -20,7 +20,7 @@ namespace SWMS.Influx.Module.BusinessObjects
             base.OnCreated();
         }
 
-        public static string ColumnName = "Fields";
+        public static string ColumnName = "Field";
         public virtual string Identifier { get; set; }
         public virtual string DisplayName { get; set; }
         public virtual bool IsVisibleInTable { get; set; }

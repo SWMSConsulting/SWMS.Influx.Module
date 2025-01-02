@@ -47,13 +47,6 @@ public class InfluxEFCoreDbContext : DbContext {
         modelBuilder.HasChangeTrackingStrategy(ChangeTrackingStrategy.ChangingAndChangedNotificationsWithOriginalValues);
         modelBuilder.UsePropertyAccessMode(PropertyAccessMode.PreferFieldDuringConstruction);
 
-        /*
-        modelBuilder.Entity<AssetAdministrationShell>()
-            .HasMany(r => r.InfluxIdentificationInstances)
-            .WithOne(x => x.AssetAdministrationShell)
-            .OnDelete(DeleteBehavior.Cascade);
-        */
-
         modelBuilder.Entity<InfluxMeasurement>()
             .HasMany(r => r.InfluxFields)
             .WithOne(x => x.InfluxMeasurement)
@@ -85,5 +78,7 @@ public class InfluxEFCoreDbContext : DbContext {
             .Entity<PredefinedQuerySettings>()
             .Property(d => d.AggregateFunction)
             .HasConversion<string>();
+
+        modelBuilder.Entity<FixModelEditor>();
     }
 }

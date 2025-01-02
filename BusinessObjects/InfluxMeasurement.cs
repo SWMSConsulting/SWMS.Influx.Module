@@ -13,7 +13,7 @@ namespace SWMS.Influx.Module.BusinessObjects
     [ImageName("ChartType_Line")]
     public class InfluxMeasurement : BaseObject
     {
-        public static string ColumnName = "Measurements";
+        public static string ColumnName = "Measurement";
         public virtual string Identifier { get; set; }
         public virtual string DisplayName { get; set; }
         public virtual IList<InfluxField> InfluxFields { get; set; } = new ObservableCollection<InfluxField>();
@@ -23,12 +23,6 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         [NotMapped]
         public bool IsInUse => InfluxIdentificationTemplates.Count > 0;
-
-        [NotMapped]
-        public IEnumerable<InfluxIdentificationInstance> InfluxIdentificationInstances => InfluxIdentificationTemplates.SelectMany(x => x.InfluxIdentificationInstances);
-
-        [NotMapped]
-        public IEnumerable<AssetAdministrationShell> AssetAdministrationShells => InfluxIdentificationInstances.Select(x => x.AssetAdministrationShell);
 
         public async Task GetFields()
         {
