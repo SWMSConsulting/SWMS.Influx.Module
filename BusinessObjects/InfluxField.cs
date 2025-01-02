@@ -26,6 +26,7 @@ namespace SWMS.Influx.Module.BusinessObjects
         public virtual bool IsVisibleInTable { get; set; }
         public virtual bool IsVisibleInChart { get; set; }
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
+        public virtual IList<CachedQuery> CachedQueries { get; set; } = new ObservableCollection<CachedQuery>();
 
         [NotMapped]
         public ObservableCollection<InfluxDatapoint> Datapoints { get; set; } = new ObservableCollection<InfluxDatapoint>();
