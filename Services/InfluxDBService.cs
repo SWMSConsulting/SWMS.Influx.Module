@@ -42,8 +42,16 @@ public class InfluxDBService
 
     private static async void InitializeInfluxSchema()
     {
-        await QueryInfluxMeasurements();
-        await RefreshLastDatapoints();
+        try
+        {
+            await QueryInfluxMeasurements();
+            //await RefreshLastDatapoints();
+            //await RefreshCachedQueries();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
     }
 
 
