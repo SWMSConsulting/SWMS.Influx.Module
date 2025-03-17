@@ -431,6 +431,8 @@ public class InfluxDBService
         var timer = new System.Timers.Timer(TimeSpan.FromSeconds(rate));
         timer.Elapsed += timer_Elapsed;
         timer.Start();
+
+        worker.RunWorkerAsync();
     }
 
     void timer_Elapsed(object sender, ElapsedEventArgs e)
