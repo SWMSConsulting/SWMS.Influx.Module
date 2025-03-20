@@ -16,9 +16,13 @@ namespace SWMS.Influx.Module.BusinessObjects
     [XafDefaultProperty(nameof(Caption))]
     public abstract class AssetAdministrationShell : BaseObject
     {
+        public abstract bool UpdatePropertiesOnLoaded { get; }
         public override void OnLoaded()
         {
-            UpdateProperties();
+            if (UpdatePropertiesOnLoaded)
+            {
+                UpdateProperties();
+            }
             base.OnLoaded();
         }
 
