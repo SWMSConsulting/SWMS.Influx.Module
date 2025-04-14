@@ -1,3 +1,4 @@
+using DevExpress.ExpressApp.Utils;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using SWMS.Influx.Module.Services;
@@ -13,9 +14,15 @@ namespace SWMS.Influx.Module.BusinessObjects
     [ImageName("ChartType_Line")]
     public class InfluxMeasurement : BaseObject
     {
-        public static string ColumnName = "Measurement";
+        public static string ColumnName = GetLocalizedString("Measurement");
         public virtual string Identifier { get; set; }
-        public virtual string DisplayName { get; set; }
+
+        private string _displayName;
+        public virtual string DisplayName
+        {
+            get => GetLocalizedString(_displayName);
+            set { _displayName = value; }
+        }
         public virtual IList<InfluxField> InfluxFields { get; set; } = new ObservableCollection<InfluxField>();
         public virtual IList<InfluxTagKey> InfluxTagKeys { get; set; } = new ObservableCollection<InfluxTagKey>();
         public virtual IList<InfluxIdentificationTemplate> InfluxIdentificationTemplates { get; set; } = new ObservableCollection<InfluxIdentificationTemplate>();
@@ -60,6 +67,11 @@ namespace SWMS.Influx.Module.BusinessObjects
             }
 
             ObjectSpace.CommitChanges();
+        }
+
+        private static string GetLocalizedString(string key)
+        {
+            return CaptionHelper.GetLocalizedText("InfluxModule", key, key);
         }
     }
 }

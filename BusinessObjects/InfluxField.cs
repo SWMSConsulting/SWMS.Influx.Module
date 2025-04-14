@@ -1,3 +1,4 @@
+using DevExpress.ExpressApp.Utils;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using System.Collections.ObjectModel;
@@ -20,9 +21,16 @@ namespace SWMS.Influx.Module.BusinessObjects
             base.OnCreated();
         }
 
-        public static string ColumnName = "Field";
+        public static string ColumnName = GetLocalizedString("Field");
         public virtual string Identifier { get; set; }
-        public virtual string DisplayName { get; set; }
+
+        private string _displayName;
+        public virtual string DisplayName
+        {
+            get => GetLocalizedString(_displayName);
+            set { _displayName = value; }
+        }
+
         public virtual bool IsVisibleInTable { get; set; }
         public virtual bool IsVisibleInChart { get; set; }
         public virtual InfluxMeasurement InfluxMeasurement { get; set; }
@@ -30,5 +38,10 @@ namespace SWMS.Influx.Module.BusinessObjects
 
         [NotMapped]
         public ObservableCollection<InfluxDatapoint> Datapoints { get; set; } = new ObservableCollection<InfluxDatapoint>();
+
+        private static string GetLocalizedString(string key)
+        {
+            return CaptionHelper.GetLocalizedText("InfluxModule", key, key);
+        }
     }
 }
