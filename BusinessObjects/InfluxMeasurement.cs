@@ -6,72 +6,80 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SWMS.Influx.Module.BusinessObjects
+namespace SWMS.Influx.Module.BusinessObjects;
+
+[DefaultClassOptions]
+[DefaultProperty(nameof(DisplayName))]
+[NavigationItem("Influx")]
+[ImageName("ChartType_Line")]
+public class InfluxMeasurement : BaseObject
 {
-    [DefaultClassOptions]
-    [DefaultProperty(nameof(DisplayName))]
-    [NavigationItem("Influx")]
-    [ImageName("ChartType_Line")]
-    public class InfluxMeasurement : BaseObject
+    public static string ColumnName = GetLocalizedString("Measurement");
+    public virtual string Identifier { get; set; }
+
+    private string _displayName;
+    public virtual string DisplayName
     {
-        public static string ColumnName = GetLocalizedString("Measurement");
-        public virtual string Identifier { get; set; }
-
-        private string _displayName;
-        public virtual string DisplayName
+        get
         {
-            get => GetLocalizedString(_displayName);
-            set { _displayName = value; }
-        }
-        public virtual IList<InfluxField> InfluxFields { get; set; } = new ObservableCollection<InfluxField>();
-        public virtual IList<InfluxTagKey> InfluxTagKeys { get; set; } = new ObservableCollection<InfluxTagKey>();
-        public virtual IList<InfluxIdentificationTemplate> InfluxIdentificationTemplates { get; set; } = new ObservableCollection<InfluxIdentificationTemplate>();
-        public virtual IList<PredefinedQuerySettings> PredefinedSettings { get; set; } = new ObservableCollection<PredefinedQuerySettings>();
-
-        [NotMapped]
-        public bool IsInUse => InfluxIdentificationTemplates.Count > 0;
-
-        public async Task GetFields()
-        {
-            var results = await InfluxDBService.GetInfluxFieldsForMeasurement(Identifier);
-
-            foreach(var result in results)
+            var localString = GetLocalizedString(Identifier);
+            if (localString != Identifier)
             {
-                if(InfluxFields.Any(f => f.Identifier == result.Identifier))
-                {
-                    continue;
-                }
+                return localString;
+            }
+            return _displayName;
+        }
+        set { _displayName = value; }
+    }
 
-                var field = ObjectSpace.CreateObject<InfluxField>();
-                field.Identifier = result.Identifier;
-                field.DisplayName = result.DisplayName;
-                InfluxFields.Add(field);
+    public virtual IList<InfluxField> InfluxFields { get; set; } = new ObservableCollection<InfluxField>();
+    public virtual IList<InfluxTagKey> InfluxTagKeys { get; set; } = new ObservableCollection<InfluxTagKey>();
+    public virtual IList<InfluxIdentificationTemplate> InfluxIdentificationTemplates { get; set; } = new ObservableCollection<InfluxIdentificationTemplate>();
+    public virtual IList<PredefinedQuerySettings> PredefinedSettings { get; set; } = new ObservableCollection<PredefinedQuerySettings>();
+
+    [NotMapped]
+    public bool IsInUse => InfluxIdentificationTemplates.Count > 0;
+
+    public async Task GetFields()
+    {
+        var results = await InfluxDBService.GetInfluxFieldsForMeasurement(Identifier);
+
+        foreach(var result in results)
+        {
+            if(InfluxFields.Any(f => f.Identifier == result.Identifier))
+            {
+                continue;
             }
 
-            ObjectSpace.CommitChanges();
+            var field = ObjectSpace.CreateObject<InfluxField>();
+            field.Identifier = result.Identifier;
+            field.DisplayName = result.DisplayName;
+            InfluxFields.Add(field);
         }
 
-        public async Task GetTagKeys()
-        {
-            var results = await InfluxDBService.GetInfluxTagKeysForMeasurement(Identifier);
+        ObjectSpace.CommitChanges();
+    }
 
-            foreach (var result in results)
+    public async Task GetTagKeys()
+    {
+        var results = await InfluxDBService.GetInfluxTagKeysForMeasurement(Identifier);
+
+        foreach (var result in results)
+        {
+            if (InfluxTagKeys.Any(f => f.Identifier == result.Identifier) || result.Identifier.StartsWith("_"))
             {
-                if (InfluxTagKeys.Any(f => f.Identifier == result.Identifier) || result.Identifier.StartsWith("_"))
-                {
-                    continue;
-                }
-                var tag = ObjectSpace.CreateObject<InfluxTagKey>();
-                tag.Identifier = result.Identifier;
-                InfluxTagKeys.Add(tag);
+                continue;
             }
-
-            ObjectSpace.CommitChanges();
+            var tag = ObjectSpace.CreateObject<InfluxTagKey>();
+            tag.Identifier = result.Identifier;
+            InfluxTagKeys.Add(tag);
         }
 
-        private static string GetLocalizedString(string key)
-        {
-            return CaptionHelper.GetLocalizedText("InfluxModule", key, key);
-        }
+        ObjectSpace.CommitChanges();
+    }
+
+    private static string GetLocalizedString(string key)
+    {
+        return CaptionHelper.GetLocalizedText("InfluxModule", key, key);
     }
 }

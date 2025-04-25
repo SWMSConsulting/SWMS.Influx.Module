@@ -27,7 +27,15 @@ namespace SWMS.Influx.Module.BusinessObjects
         private string _displayName;
         public virtual string DisplayName
         {
-            get => GetLocalizedString(_displayName);
+            get
+            {
+                var localString = GetLocalizedString(Identifier);
+                if (localString != Identifier)
+                {
+                    return localString;
+                }
+                return _displayName;
+            }
             set { _displayName = value; }
         }
 
