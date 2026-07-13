@@ -82,33 +82,30 @@ public class InfluxDBService
             }
         });
 
-        using (var scope = _serviceScopeFactory.CreateScope())
+        using var scope = _serviceScopeFactory.CreateScope();
+        var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+        using var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+
+        var allMeasurements = objectSpace.GetObjects<InfluxMeasurement>();
+
+        foreach (var measurement in results)
         {
-            var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
-            
-            var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
-
-            var allMeasurements = objectSpace.GetObjects<InfluxMeasurement>();
-
-            foreach (var measurement in results)
+            var existingMeasurement = allMeasurements.FirstOrDefault(x => x.Identifier == measurement.Identifier);
+            if (existingMeasurement == null)
             {
-                var existingMeasurement = allMeasurements.FirstOrDefault(x => x.Identifier == measurement.Identifier);
-                if (existingMeasurement == null)
-                {
-                    existingMeasurement = objectSpace.CreateObject<InfluxMeasurement>();
-                    existingMeasurement.Identifier = measurement.Identifier;
-                    existingMeasurement.DisplayName = measurement.DisplayName;
-                }
-
-                await existingMeasurement.GetFields();
-                await existingMeasurement.GetTagKeys();
+                existingMeasurement = objectSpace.CreateObject<InfluxMeasurement>();
+                existingMeasurement.Identifier = measurement.Identifier;
+                existingMeasurement.DisplayName = measurement.DisplayName;
             }
 
-            objectSpace.CommitChanges();
-
-            var updatedMeasurements = objectSpace.GetObjects<InfluxMeasurement>();
-            return updatedMeasurements;
+            await existingMeasurement.GetFields();
+            await existingMeasurement.GetTagKeys();
         }
+
+        objectSpace.CommitChanges();
+
+        var updatedMeasurements = objectSpace.GetObjects<InfluxMeasurement>();
+        return updatedMeasurements;
     }
     #endregion
 
@@ -171,10 +168,13 @@ public class InfluxDBService
     {
         using var scope = _serviceScopeFactory.CreateScope();
         var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
-        var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<CachedQuery>();
+        using var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<CachedQuery>();
         var queries = objectSpace.GetObjects<CachedQuery>().ToList();
 
-        queries.ForEach(query => RefreshCachedQuery(query));
+        foreach (var query in queries)
+        {
+            await RefreshCachedQuery(query);
+        }
     }
 
     public static async Task RefreshCachedQuery(CachedQuery query)
@@ -205,7 +205,8 @@ public class InfluxDBService
     {
         using var scope = _serviceScopeFactory.CreateScope();
         var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
-        var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+        using var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+
         var measurements = objectSpace.GetObjects<InfluxMeasurement>().Where(m => m.IsInUse).ToList();
 
         if (measurements.Count == 0)
@@ -305,52 +306,52 @@ public class InfluxDBService
         // TODO: optimize by keeping local List / HashSet of InfluxFields instead of loading from ObjectSpace
 
         using var scope = _serviceScopeFactory.CreateScope();
-            var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
-            var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
-            var influxFields = objectSpace.GetObjects<InfluxField>();
-            var influxTagKeys = objectSpace.GetObjects<InfluxTagKey>();
+        var objectSpaceFactory = scope.ServiceProvider.GetService<INonSecuredObjectSpaceFactory>();
+        using var objectSpace = objectSpaceFactory.CreateNonSecuredObjectSpace<InfluxMeasurement>();
+        var influxFields = objectSpace.GetObjects<InfluxField>();
+        var influxTagKeys = objectSpace.GetObjects<InfluxTagKey>();
             
-            List<InfluxDatapoint> datapoints = new();
-            tables.ForEach(table =>
+        List<InfluxDatapoint> datapoints = new();
+        tables.ForEach(table =>
+        {
+            InfluxField currentField = influxFields.First();
+            table.Records.ForEach(record =>
             {
-                InfluxField currentField = influxFields.First();
-                table.Records.ForEach(record =>
+                if (record.GetValue() == null)
                 {
-                    if (record.GetValue() == null)
+                    return;
+                }
+                if (!FluxRecordIsInfluxField(currentField, record))
+                {
+                    currentField = influxFields.FirstOrDefault(x => FluxRecordIsInfluxField(x, record));
+                }
+                if (currentField == null)
+                {
+                    return;
+                }
+
+                var tagList = new BindingList<InfluxTagValue>();
+
+                var recordTags = record.Values.Where(x => !x.Key.StartsWith("_") && x.Key != "result" && x.Key != "table").OrderBy(x => x.Key).ToList();
+
+                foreach (var tag in recordTags)
+                {
+                    var influxTagKey = influxTagKeys.FirstOrDefault(x => x.Identifier == tag.Key && x.InfluxMeasurement.Identifier == record.GetMeasurement());
+                    if (influxTagKey == null)
                     {
                         return;
                     }
-                    if (!FluxRecordIsInfluxField(currentField, record))
-                    {
-                        currentField = influxFields.FirstOrDefault(x => FluxRecordIsInfluxField(x, record));
-                    }
-                    if (currentField == null)
-                    {
-                        return;
-                    }
+                    tagList.Add(new InfluxTagValue(influxTagKey, tag.Value.ToString()));
+                }
 
-                    var tagList = new BindingList<InfluxTagValue>();
-
-                    var recordTags = record.Values.Where(x => !x.Key.StartsWith("_") && x.Key != "result" && x.Key != "table").OrderBy(x => x.Key).ToList();
-
-                    foreach (var tag in recordTags)
-                    {
-                        var influxTagKey = influxTagKeys.FirstOrDefault(x => x.Identifier == tag.Key && x.InfluxMeasurement.Identifier == record.GetMeasurement());
-                        if (influxTagKey == null)
-                        {
-                            return;
-                        }
-                        tagList.Add(new InfluxTagValue(influxTagKey, tag.Value.ToString()));
-                    }
-
-                    InfluxDatapoint datapoint = new InfluxDatapoint((DateTime)record.GetTimeInDateTime(), record.GetValue());
-                    datapoint.InfluxField = currentField;
-                    datapoint.InfluxTagValues = tagList;
-                    datapoints.Add(datapoint);
-                });
+                InfluxDatapoint datapoint = new InfluxDatapoint((DateTime)record.GetTimeInDateTime(), record.GetValue());
+                datapoint.InfluxField = currentField;
+                datapoint.InfluxTagValues = tagList;
+                datapoints.Add(datapoint);
             });
-            return datapoints;
-        }
+        });
+        return datapoints;
+    }
     public static bool FluxRecordIsInfluxField(InfluxField field, FluxRecord record)
     {
         if (field == null || record == null)
