@@ -25,10 +25,18 @@ namespace SWMS.Influx.Module.Controllers
             };
             mySimpleAction.Execute += GetFieldsAction;
         }
-        private async void GetFieldsAction(object sender, SimpleActionExecuteEventArgs e)
+        private void GetFieldsAction(object sender, SimpleActionExecuteEventArgs e)
+        {
+            _ = GetFieldsActionAsync(e);
+        }
+
+        private async Task GetFieldsActionAsync(SimpleActionExecuteEventArgs e)
         {
             InfluxMeasurement currentObject = View.CurrentObject as InfluxMeasurement;
-            await currentObject.GetFields();
+            if (currentObject != null)
+            {
+                await currentObject.GetFields();
+            }
         }
 
         protected override void OnActivated()
@@ -36,16 +44,24 @@ namespace SWMS.Influx.Module.Controllers
             base.OnActivated();
             // Perform various tasks depending on the target View.
         }
-        protected override async void OnViewControlsCreated()
+        protected override void OnViewControlsCreated()
         {
             base.OnViewControlsCreated();
+            _ = OnViewControlsCreatedAsync();
+        }
+
+        private async Task OnViewControlsCreatedAsync()
+        {
             // Access and customize the target View control.
             var currentObject = View.CurrentObject as InfluxMeasurement;
-            if (currentObject.InfluxFields.Count > 0)
+            if (currentObject?.InfluxFields.Count > 0)
             {
                 return;
             }
-            await currentObject.GetFields();
+            if (currentObject != null)
+            {
+                await currentObject.GetFields();
+            }
         }
         protected override void OnDeactivated()
         {

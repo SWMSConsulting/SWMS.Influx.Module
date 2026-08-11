@@ -22,7 +22,7 @@ namespace SWMS.Influx.Module.Controllers
             mySimpleAction.Execute += GetMeasurementsAction;
             */
         }
-        private async void GetMeasurementsAction(object sender, SimpleActionExecuteEventArgs e)
+        private void GetMeasurementsAction(object sender, SimpleActionExecuteEventArgs e)
         {
             AssetAdministrationShell currentObject = View.CurrentObject as AssetAdministrationShell;
             //await currentObject.GetMeasurements();
@@ -33,7 +33,7 @@ namespace SWMS.Influx.Module.Controllers
             base.OnActivated();
             // Perform various tasks depending on the target View.
         }
-        protected override async void OnViewControlsCreated()
+        protected override void OnViewControlsCreated()
         {
             base.OnViewControlsCreated();
             // Access and customize the target View control.

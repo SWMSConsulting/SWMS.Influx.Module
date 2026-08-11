@@ -9,10 +9,11 @@ using SWMS.Influx.Module.Models;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Timers;
+using Microsoft.Extensions.Logging;
 
 namespace SWMS.Influx.Module.Services;
 
-public class InfluxDBService
+public class InfluxDBService : IDisposable
 {
     private readonly static string _url = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_URL");
     private readonly static string _token = EnvironmentVariableService.GetRequiredStringFromENV("INFLUX_TOKEN");
@@ -29,21 +30,24 @@ public class InfluxDBService
     private readonly static InfluxDBClient _client = new InfluxDBClient(_clientOptions);
     private readonly static WriteApi _writeApi = _client.GetWriteApi();
     private readonly static QueryApi _queryApi = _client.GetQueryApi();
+    private static readonly object _cacheLock = new object();
     private static Dictionary<string, InfluxDatapoint> LastDatapoints { get; set; } = new Dictionary<string, InfluxDatapoint>();
-    
+
     private static Dictionary<string, Dictionary<string, List<InfluxDatapoint>>> CachedQueries { get; set; } = new Dictionary<string, Dictionary<string, List<InfluxDatapoint>>>();
 
     private static IServiceScopeFactory _serviceScopeFactory;
+    private static ILogger<InfluxDBService> _logger;
 
-    public InfluxDBService(IServiceScopeFactory serviceScopeFactory)
+    public InfluxDBService(IServiceScopeFactory serviceScopeFactory, ILogger<InfluxDBService> logger)
     {
         _serviceScopeFactory = serviceScopeFactory;
+        _logger = logger;
 
-        InitializeInfluxSchema();
+        _ = InitializeInfluxSchemaAsync(); // Fire-and-forget with discard operator
         SetupBackgroundWorker();
     }
 
-    private static async void InitializeInfluxSchema()
+    private static async Task InitializeInfluxSchemaAsync()
     {
         try
         {
@@ -53,7 +57,7 @@ public class InfluxDBService
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger?.LogError(ex.ToString());
         }
     }
 
@@ -77,7 +81,7 @@ public class InfluxDBService
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                _logger?.LogError(ex.ToString());
                 return new ObservableCollection<InfluxMeasurement>();
             }
         });
@@ -175,6 +179,13 @@ public class InfluxDBService
         {
             await RefreshCachedQuery(query);
         }
+
+        // Debug output for total cache sizes
+        var totalQueries = CachedQueries.Count;
+        var totalFields = CachedQueries.Values.Sum(dict => dict.Count);
+        var totalDatapoints = CachedQueries.Values.SelectMany(dict => dict.Values).Sum(list => list.Count);
+        var message = $"CachedQueries total: {totalQueries} queries, {totalFields} fields, {totalDatapoints} datapoints";
+        _logger?.LogInformation(message);
     }
 
     public static async Task RefreshCachedQuery(CachedQuery query)
@@ -199,6 +210,11 @@ public class InfluxDBService
         });
 
         CachedQueries[query.Identifier] = dictionaryResult;
+
+        // Debug output for cache sizes
+        var totalDatapointsInQuery = dictionaryResult.Values.Sum(list => list.Count);
+        var message = $"CachedQuery '{query.Identifier}' refreshed: {dictionaryResult.Count} fields, {totalDatapointsInQuery} total datapoints";
+        _logger?.LogInformation(message);
     }
 
     public static async Task RefreshLastDatapoints()
@@ -211,21 +227,41 @@ public class InfluxDBService
 
         if (measurements.Count == 0)
         {
-            Console.WriteLine("No relevant measurements found");
+            _logger?.LogInformation("No relevant measurements found");
             return;
         }
 
         var datapoints = await QueryLastDatapoints("-30d", measurements);
         // InfluxField.ID would also be possible as key, but is less readable
-        LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField, x.InfluxTagValues), x => x);
-        Console.WriteLine($"Last Datapoints refreshed: {LastDatapoints.Count}");
+        lock (_cacheLock)
+        {
+            LastDatapoints = datapoints.ToDictionary(x => GetFieldIdentifier(x.InfluxField, x.InfluxTagValues), x => x);
+
+            // Enhanced debug output for LastDatapoints cache
+            var message = $"LastDatapoints refreshed: {LastDatapoints.Count} unique field/tag combinations from {measurements.Count} measurements";
+            _logger?.LogDebug(message);
+
+            // Additional memory usage estimation
+            var estimatedBytes = LastDatapoints.Count * 200; // Rough estimate: ~200 bytes per entry
+            var estimatedMB = estimatedBytes / (1024.0 * 1024.0);
+            var memoryMessage = $"LastDatapoints estimated memory usage: ~{estimatedMB:F2} MB";
+            _logger?.LogDebug(memoryMessage);
+        }
     }
 
     private static CancellationTokenSource cancellationTokenSourceLastDp = new CancellationTokenSource();
 
     private static async Task<List<InfluxDatapoint>> QueryLastDatapoints(string fluxDuration, IList<InfluxMeasurement> measurements)
     {
-        cancellationTokenSourceLastDp.Cancel();
+        try
+        {
+            cancellationTokenSourceLastDp.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Already disposed, ignore
+        }
+        cancellationTokenSourceLastDp?.Dispose();
         cancellationTokenSourceLastDp = new CancellationTokenSource();
 
         var fluxRange = new FluxRange(fluxDuration, FluxRange.Now);
@@ -249,7 +285,15 @@ public class InfluxDBService
         FluxQueryPipe? pipe = null
         )
     {
-        cancellationTokenSourceQueryDp.Cancel();
+        try
+        {
+            cancellationTokenSourceQueryDp.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Already disposed, ignore
+        }
+        cancellationTokenSourceQueryDp?.Dispose();
         cancellationTokenSourceQueryDp = new CancellationTokenSource();
         return await QueryInfluxDatapointsWithCancellation(
             fluxRange: fluxRange,
@@ -281,7 +325,7 @@ public class InfluxDBService
             .AddTagFilter(influxIdentificationInstances)
             .AddPipe(pipe)
             .Build();
-        Console.WriteLine(query);
+        _logger?.LogDebug(query);
 
         try
         {
@@ -290,13 +334,13 @@ public class InfluxDBService
         }
         catch (OperationCanceledException ex)
         {
-            Console.WriteLine("Operation Canceled");
-            Console.WriteLine(ex.Message);
+            _logger?.LogInformation("Operation Canceled");
+            _logger?.LogInformation(ex.Message);
             return new List<InfluxDatapoint>();
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.ToString());
+            _logger?.LogError(ex.ToString());
             return new List<InfluxDatapoint>();
         }
     }
@@ -411,6 +455,9 @@ public class InfluxDBService
 
     #region Background Worker
     private BackgroundWorker worker;
+    private System.Timers.Timer refreshTimer;
+    private bool _disposed = false;
+
     private void SetupBackgroundWorker()
     {
         var refreshRate = Environment.GetEnvironmentVariable("LAST_DATAPOINTS_REFRESH_RATE");
@@ -418,7 +465,7 @@ public class InfluxDBService
         if (!double.TryParse(refreshRate, out double rate))
             return;
 
-        Console.WriteLine($"Setting up Background Worker with refresh rate of {rate}s");
+        _logger?.LogInformation($"Setting up Background Worker with refresh rate of {rate}s");
 
         worker = new BackgroundWorker()
         {
@@ -429,25 +476,48 @@ public class InfluxDBService
         worker.ProgressChanged += worker_ProgressChanged;
         worker.RunWorkerCompleted += worker_RunWorkerCompleted;
 
-        var timer = new System.Timers.Timer(TimeSpan.FromSeconds(rate));
-        timer.Elapsed += timer_Elapsed;
-        timer.Start();
+        refreshTimer = new System.Timers.Timer(TimeSpan.FromSeconds(rate));
+        refreshTimer.Elapsed += timer_Elapsed;
+        refreshTimer.Start();
 
         worker.RunWorkerAsync();
     }
 
     void timer_Elapsed(object sender, ElapsedEventArgs e)
     {
-        if (!worker.IsBusy)
+        if (_disposed || worker == null || worker.IsBusy)
+            return;
+
+        try
+        {
             worker.RunWorkerAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            // Worker might be disposed, ignore
+        }
     }
 
-    async void worker_DoWork(object sender, DoWorkEventArgs e)
+    private void worker_DoWork(object sender, DoWorkEventArgs e)
     {
+        if (_disposed)
+            return;
+
         BackgroundWorker w = (BackgroundWorker)sender;
 
-        await RefreshLastDatapoints();
-        await RefreshCachedQueries();
+        try
+        {
+            // Run async work synchronously in BackgroundWorker context
+            Task.Run(async () =>
+            {
+                await RefreshLastDatapoints();
+                await RefreshCachedQueries();
+            }).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"Error in background worker: {ex.Message}");
+        }
     }
 
     private void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -459,12 +529,71 @@ public class InfluxDBService
     {
         if (e.Cancelled)
         {
-            //do something
+            _logger?.LogInformation("Background worker was cancelled");
         }
-        else
+        else if (e.Error != null)
         {
-            //do something else
+            _logger?.LogError($"Background worker error: {e.Error.Message}");
         }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
+        {
+            // Dispose managed resources
+            if (refreshTimer != null)
+            {
+                refreshTimer.Stop();
+                refreshTimer.Elapsed -= timer_Elapsed;
+                refreshTimer.Dispose();
+                refreshTimer = null;
+            }
+
+            if (worker != null)
+            {
+                if (worker.IsBusy)
+                {
+                    worker.CancelAsync();
+                    // Give it a moment to cancel
+                    Thread.Sleep(100);
+                }
+
+                worker.DoWork -= worker_DoWork;
+                worker.ProgressChanged -= worker_ProgressChanged;
+                worker.RunWorkerCompleted -= worker_RunWorkerCompleted;
+                worker.Dispose();
+                worker = null;
+            }
+
+            // Clean up cancellation tokens
+            try
+            {
+                cancellationTokenSourceLastDp?.Cancel();
+                cancellationTokenSourceLastDp?.Dispose();
+            }
+            catch (ObjectDisposedException) { }
+
+            try
+            {
+                cancellationTokenSourceQueryDp?.Cancel();
+                cancellationTokenSourceQueryDp?.Dispose();
+            }
+            catch (ObjectDisposedException) { }
+
+            _logger?.LogInformation("InfluxDBService disposed");
+        }
+
+        _disposed = true;
     }
     #endregion
 }

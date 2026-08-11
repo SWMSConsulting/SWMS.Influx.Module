@@ -121,9 +121,9 @@ namespace SWMS.Influx.Module.Controllers
 
         }
 
-        private async void LoadDatapointsAction(object sender, SimpleActionExecuteEventArgs e)
+        private void LoadDatapointsAction(object sender, SimpleActionExecuteEventArgs e)
         {
-            await LoadDatapoints();
+            _ = LoadDatapoints();
         }
         private async Task LoadDatapoints()
         {

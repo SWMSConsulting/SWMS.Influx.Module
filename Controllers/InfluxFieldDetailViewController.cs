@@ -21,9 +21,9 @@ namespace SWMS.Influx.Module.Controllers
             };
             mySimpleAction.Execute += GetDatapointsAction;
         }
-        private async void GetDatapointsAction(object sender, SimpleActionExecuteEventArgs e)
+        private void GetDatapointsAction(object sender, SimpleActionExecuteEventArgs e)
         {
-            await GetDatapointsForCurrentObject();
+            _ = GetDatapointsForCurrentObject();
         }
 
         protected override void OnActivated()
@@ -31,11 +31,11 @@ namespace SWMS.Influx.Module.Controllers
             base.OnActivated();
             // Perform various tasks depending on the target View.
         }
-        protected override async void OnViewControlsCreated()
+        protected override void OnViewControlsCreated()
         {
             base.OnViewControlsCreated();
             // Access and customize the target View control.
-            await GetDatapointsForCurrentObject();
+            _ = GetDatapointsForCurrentObject();
         }
 
         async Task GetDatapointsForCurrentObject()
